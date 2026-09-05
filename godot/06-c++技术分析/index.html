@@ -1,0 +1,562 @@
+<!doctype html><html lang=zh-CN dir=ltr><head><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><meta name=color-scheme content="light dark"><meta name=theme-color content="#08111f" media="(prefers-color-scheme: dark)"><meta name=theme-color content="#fff5e1" media="(prefers-color-scheme: light)"><script>document.documentElement.classList.add("js"),function(){try{var e,t=localStorage.getItem("site-theme");t==="light"||t==="dark"?document.documentElement.setAttribute("data-theme",t):document.documentElement.setAttribute("data-theme",window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"),e=localStorage.getItem("site-palette"),(e==="macos"||e==="github"||e==="gruvbox")&&document.documentElement.setAttribute("data-palette",e)}catch{}}()</script><title>Godot Learning-6 · 我的博客</title><meta name=description content='06 - Godot 源码中的 C++ 工程技巧 源码版本：Godot 4.8.dev（master 分支，2026-08-26） 证据等级：A（除非另行标注）
+概述 Godot 引擎的 C++ 源码是一座 C++ 工程实践的宝库。它没有使用 C++20/23 的最新特性（为了保证跨编译器兼容性，主要基于 C++17），但通过精巧的模板元编程、宏编程、内存管理、虚函数设计，构建了一套自洽的"动态 C++“运行时。这些技巧使得 Godot 既保持了 C++ 的性能，又获得了类似动态语言的反射、序列化、脚本绑定能力。
+'><meta name=author content="你的名字"><link rel=canonical href=https://quhongbin.github.io/godot/06-c++%E6%8A%80%E6%9C%AF%E5%88%86%E6%9E%90/><link rel=alternate hreflang=zh-CN href=https://quhongbin.github.io/godot/06-c++%E6%8A%80%E6%9C%AF%E5%88%86%E6%9E%90/><meta property="og:type" content="article"><meta property="og:title" content="Godot Learning-6 · 我的博客"><meta property="og:description" content='06 - Godot 源码中的 C++ 工程技巧 源码版本：Godot 4.8.dev（master 分支，2026-08-26） 证据等级：A（除非另行标注）
+概述 Godot 引擎的 C++ 源码是一座 C++ 工程实践的宝库。它没有使用 C++20/23 的最新特性（为了保证跨编译器兼容性，主要基于 C++17），但通过精巧的模板元编程、宏编程、内存管理、虚函数设计，构建了一套自洽的"动态 C++“运行时。这些技巧使得 Godot 既保持了 C++ 的性能，又获得了类似动态语言的反射、序列化、脚本绑定能力。
+'><meta property="og:url" content="https://quhongbin.github.io/godot/06-c++%E6%8A%80%E6%9C%AF%E5%88%86%E6%9E%90/"><meta property="og:site_name" content="我的博客"><link rel=stylesheet href=/css/main.min.40ad2a9c00a93175c79e471a6792f23457c527e9c46cc8ee6e16d300f7bf6674.css integrity="sha256-QK0qnACpMXXHnkcaZ5LyNFfFJ+nEbMjubhbTAPe/ZnQ="><link rel=stylesheet href=/css/site-palettes.min.0f2ed388ed0b74ab72dcd2b144a6a19acbd23a4edca157c36eecdffad3dfe7bf.css integrity="sha256-Dy7TiO0LdKty3NKxRKahmsvSOk7coVfDbuzf+tPf578="><link rel=stylesheet href=/css/code-themes.min.78bd37b0419e6af001a97d6754f5264cacc1413c97b2e5d67033547083130a12.css integrity="sha256-eL03sEGeavABqX1nVPUmTKzBQTyXsuXWcDNUcIMTChI="><link rel=stylesheet href=https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css crossorigin=anonymous><style>:root{--content-width:1400px;--article-width:1100px;--toc-width:250px;--article-pad:clamp(25px, 6vw, 72px)}</style><link rel=icon href=/images/avatar.webp></head><body class=page-kind-page><a class=skip-link href=#main-content>跳到正文</a><div class=site-background aria-hidden=true></div><header class=site-header data-site-header><div class=header-inner><a class=site-brand href=/ aria-label=我的博客><img class=brand-avatar src=/images/avatar.webp alt width=44 height=44>
+<span class=brand-copy><strong>我的博客</strong>
+<small>在代码与生活之间</small>
+</span></a><button class=menu-toggle type=button aria-expanded=false aria-controls=site-navigation data-menu-toggle>
+<span class=menu-toggle-lines aria-hidden=true></span>
+<span class=sr-only>打开或关闭菜单</span></button><nav id=site-navigation class=site-navigation aria-label=主导航 data-navigation><ul class=nav-menu><li><a href=/>首页</a></li><li class="nav-item has-categories" data-categories-item><a href=/posts/ data-categories-trigger aria-haspopup=true>文章</a><ul class=categories-dropdown><li class=categories-all><a href=/posts/>全部文章</a></li><li><a href=/categories/godot/><span class=cat-name>Godot</span>
+<span class=term-count>8</span></a></li></ul></li><li><a href=/notes/>速记</a></li><li><a href=/tags/>标签</a></li><li><a href=/logs/>日志</a></li><li><a href=/about/>关于</a></li></ul><div class=header-social aria-label=社交链接><a href=https://github.com/your-name title=GitHub aria-label=GitHub target=_blank rel="noopener noreferrer"><svg class="icon icon-github" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 .7A11.5 11.5.0 008.36 23.11c.58.11.79-.25.79-.56v-2.23c-3.22.7-3.9-1.37-3.9-1.37-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.71.08-.71 1.17.08 1.78 1.2 1.78 1.2 1.04 1.78 2.72 1.27 3.38.97.1-.75.4-1.27.74-1.56-2.57-.29-5.27-1.28-5.27-5.68.0-1.25.45-2.28 1.19-3.08-.12-.29-.52-1.46.11-3.04.0.0.97-.31 3.16 1.18a10.98 10.98.0 015.76.0c2.19-1.49 3.15-1.18 3.15-1.18.63 1.58.23 2.75.11 3.04.74.8 1.19 1.83 1.19 3.08.0 4.41-2.71 5.38-5.29 5.67.42.36.79 1.07.79 2.16v3.2c0 .31.21.68.8.56A11.5 11.5.0 0012 .7z"/></svg>
+</a><a href=mailto:hello@example.com title=Email aria-label=Email><svg class="icon icon-email" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 4h18a2 2 0 012 2v12a2 2 0 01-2 2H3a2 2 0 01-2-2V6a2 2 0 012-2zm0 2 9 6 9-6H3zm18 12V8.4l-9 6-9-6V18h18z"/></svg></a></div><div class=theme-picker><button class=theme-toggle type=button data-theme-toggle aria-label="切换亮色 / 暗色主题" title="切换亮色 / 暗色主题">
+<svg class="icon icon-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><g stroke-linecap="round"><line x1="12" y1="2.5" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="21.5"/><line x1="2.5" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="21.5" y2="12"/><line x1="5.2" y1="5.2" x2="6.95" y2="6.95"/><line x1="17.05" y1="17.05" x2="18.8" y2="18.8"/><line x1="5.2" y1="18.8" x2="6.95" y2="17.05"/><line x1="17.05" y1="6.95" x2="18.8" y2="5.2"/></g></svg>
+<svg class="icon icon-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 019.5 4a.5.5.0 00-.78-.55 9.5 9.5.0 1011.83 11.83.5.5.0 00-.55-.78z"/></svg></button><div class=palette-menu role=group aria-label=主题配色><strong>主题配色</strong><div class=palette-group-label>亮色</div><button class=palette-option type=button data-palette-value=default data-palette-mode=light>站点默认 · 亮色</button>
+<button class=palette-option type=button data-palette-value=macos data-palette-mode=light>macOS · 亮色</button>
+<button class=palette-option type=button data-palette-value=github data-palette-mode=light>GitHub · 亮色</button>
+<button class=palette-option type=button data-palette-value=gruvbox data-palette-mode=light>Gruvbox · 亮色</button><div class=palette-group-label>暗色</div><button class=palette-option type=button data-palette-value=default data-palette-mode=dark>站点默认 · 暗色</button>
+<button class=palette-option type=button data-palette-value=macos data-palette-mode=dark>macOS · 暗色</button>
+<button class=palette-option type=button data-palette-value=github data-palette-mode=dark>GitHub · 暗色</button>
+<button class=palette-option type=button data-palette-value=gruvbox data-palette-mode=dark>Gruvbox · 暗色</button></div></div><details class=language-switcher><summary aria-label=选择语言><span aria-hidden=true>文/A</span>
+<span>简体中文</span></summary><ul><li><a href=/godot/06-c++%E6%8A%80%E6%9C%AF%E5%88%86%E6%9E%90/ lang=zh-CN aria-current=true>简体中文</a></li></ul></details></nav></div></header><main id=main-content class=site-main><div class=article-layout><article class="article glass-panel reveal"><div class=reading-progress aria-hidden=true><span data-reading-progress></span></div><header class=article-header><a class=back-link href=/godot/>← 返回列表</a><h1>Godot Learning-6</h1><div class=article-meta><time datetime=2026-08-26>August 26, 2026</time>
+<span>阅读约 13 分钟</span>
+<span>6256 字</span></div></header><div class="prose article-content" data-article-content><h1 id=06---godot-源码中的-c-工程技巧>06 - Godot 源码中的 C++ 工程技巧</h1><blockquote><p><strong>源码版本</strong>：Godot 4.8.dev（master 分支，2026-08-26）
+<strong>证据等级</strong>：A（除非另行标注）</p></blockquote><hr><h2 id=概述>概述</h2><p>Godot 引擎的 C++ 源码是一座 C++ 工程实践的宝库。它没有使用 C++20/23 的最新特性（为了保证跨编译器兼容性，主要基于 C++17），但通过精巧的模板元编程、宏编程、内存管理、虚函数设计，构建了一套自洽的"动态 C++&ldquo;运行时。这些技巧使得 Godot 既保持了 C++ 的性能，又获得了类似动态语言的反射、序列化、脚本绑定能力。</p><p>本章节将深入分析 Godot 源码中使用的十大类 C++ 技巧，每一项都配有源码引用、设计动机、使用示例与潜在陷阱。掌握这些技巧，不仅能帮助阅读 Godot 源码，也能提升自身的 C++ 工程能力。</p><hr><h2 id=一前向声明与编译防火墙>一、前向声明与编译防火墙</h2><h3 id=11-技巧描述>1.1 技巧描述</h3><p>Godot 大量使用前向声明（forward declaration）来减少头文件依赖，加速编译。在头文件中只声明需要的类名，不包含其完整定义，将 <code>#include</code> 推迟到 <code>.cpp</code> 文件。</p><h3 id=12-源码示例>1.2 源码示例</h3><blockquote><p><strong>证据等级 A</strong>：基于 <code>core/object/object.h</code> 验证。</p></blockquote><div class=highlight><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=c1>// core/object/object.h（简化）
+</span></span></span><span class=line><span class=cl><span class=cp>#pragma once
+</span></span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=c1>// 前向声明，不 #include
+</span></span></span><span class=line><span class=cl><span class=k>class</span> <span class=nc>StringName</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=k>class</span> <span class=nc>Variant</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=k>class</span> <span class=nc>Callable</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=k>class</span> <span class=nc>Object</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=k>class</span> <span class=nc>ScriptInstance</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=k>class</span> <span class=nc>Script</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=k>class</span> <span class=nc>Node</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=k>class</span> <span class=nc>SceneTree</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=k>class</span> <span class=nc>MessageQueue</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=k>class</span> <span class=nc>Object</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=c1>// 使用指针或引用，不需要完整定义
+</span></span></span><span class=line><span class=cl>    <span class=n>ScriptInstance</span> <span class=o>*</span><span class=n>script_instance</span> <span class=o>=</span> <span class=k>nullptr</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=n>Ref</span><span class=o>&lt;</span><span class=n>Script</span><span class=o>&gt;</span> <span class=n>script</span><span class=p>;</span> <span class=c1>// Ref&lt;T&gt; 内部是指针
+</span></span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=c1>// 方法声明中使用引用
+</span></span></span><span class=line><span class=cl>    <span class=kt>void</span> <span class=nf>set_script</span><span class=p>(</span><span class=k>const</span> <span class=n>Ref</span><span class=o>&lt;</span><span class=n>Script</span><span class=o>&gt;</span> <span class=o>&amp;</span><span class=n>p_script</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=n>Variant</span> <span class=nf>callp</span><span class=p>(</span><span class=k>const</span> <span class=n>StringName</span> <span class=o>&amp;</span><span class=n>p_method</span><span class=p>,</span> <span class=k>const</span> <span class=n>Variant</span> <span class=o>**</span><span class=n>p_args</span><span class=p>,</span> <span class=kt>int</span> <span class=n>p_argcount</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=c1>// ...
+</span></span></span><span class=line><span class=cl><span class=p>};</span>
+</span></span></code></pre></div><h3 id=13-设计动机>1.3 设计动机</h3><ul><li><strong>编译速度</strong>：减少头文件包含，避免传递依赖</li><li><strong>解耦</strong>：头文件不暴露实现细节</li><li><strong>循环依赖</strong>：前向声明打破循环</li></ul><h3 id=14-使用场景>1.4 使用场景</h3><ul><li>头文件中只用到指针/引用时</li><li>类成员是另一个类的指针时</li><li>方法参数是引用时</li></ul><h3 id=15-潜在陷阱>1.5 潜在陷阱</h3><ul><li>不能对前向声明的类调用方法或访问成员</li><li>不能以前向声明的类为值类型成员（需要完整定义计算 sizeof）</li><li><code>Ref&lt;T></code> 内部是指针，可以前向声明；但 <code>TypedArray&lt;T></code> 等模板可能需要完整定义</li></ul><hr><h2 id=二虚函数与-gdvirtual-宏>二、虚函数与 GDVIRTUAL 宏</h2><h3 id=21-技巧描述>2.1 技巧描述</h3><p>Godot 使用虚函数实现多态，但为了支持脚本覆盖（GDScript 重写 C++ 虚函数），引入了 GDVIRTUAL 宏系统。这套宏在虚函数之上叠加了一层脚本绑定，使得 GDScript 可以"覆盖&rdquo; C++ 的虚方法。</p><h3 id=22-源码示例>2.2 源码示例</h3><h4 id=221-传统虚函数>2.2.1 传统虚函数</h4><blockquote><p><strong>证据等级 A</strong>：基于 <code>core/object/object.h</code> 验证。</p></blockquote><div class=highlight><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=c1>// core/object/object.h（简化）
+</span></span></span><span class=line><span class=cl><span class=k>class</span> <span class=nc>Object</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=c1>// 通知系统的虚函数
+</span></span></span><span class=line><span class=cl>    <span class=k>virtual</span> <span class=kt>void</span> <span class=nf>_notificationv</span><span class=p>(</span><span class=kt>int</span> <span class=n>p_notification</span><span class=p>,</span> <span class=kt>bool</span> <span class=n>p_reversed</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=k>virtual</span> <span class=k>const</span> <span class=n>StringName</span> <span class=o>*</span><span class=nf>_get_class_namev</span><span class=p>()</span> <span class=k>const</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=c1>// 公共非虚接口
+</span></span></span><span class=line><span class=cl>    <span class=n>_FORCE_INLINE_</span> <span class=kt>void</span> <span class=nf>notification</span><span class=p>(</span><span class=kt>int</span> <span class=n>p_notification</span><span class=p>,</span> <span class=kt>bool</span> <span class=n>p_reversed</span> <span class=o>=</span> <span class=nb>false</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=k>if</span> <span class=p>(</span><span class=n>p_reversed</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>            <span class=n>_notification_backward</span><span class=p>(</span><span class=n>p_notification</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>        <span class=p>}</span> <span class=k>else</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>            <span class=n>_notification_forward</span><span class=p>(</span><span class=n>p_notification</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>        <span class=p>}</span>
+</span></span><span class=line><span class=cl>    <span class=p>}</span>
+</span></span><span class=line><span class=cl><span class=p>};</span>
+</span></span></code></pre></div><h4 id=222-gdvirtual-宏>2.2.2 GDVIRTUAL 宏</h4><blockquote><p><strong>证据等级 A</strong>：基于 <code>core/object/object.h:365-440</code> 验证。</p></blockquote><div class=highlight><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=c1>// core/object/object.h:365-440（简化）
+</span></span></span><span class=line><span class=cl><span class=cp>#define GDVIRTUAL0(m_name) \
+</span></span></span><span class=line><span class=cl><span class=cp>    virtual void m_name() override; \
+</span></span></span><span class=line><span class=cl><span class=cp>    static void _gdvirtual_##m_name##_bind(StringName &amp;p_class_name); \
+</span></span></span><span class=line><span class=cl><span class=cp>    virtual bool _gdvirtual_##m_name##_call() { \
+</span></span></span><span class=line><span class=cl><span class=cp>        if (SCRIPT_VIRTUAL_CALL(m_name)) { return true; } \
+</span></span></span><span class=line><span class=cl><span class=cp>        return false; \
+</span></span></span><span class=line><span class=cl><span class=cp>    }
+</span></span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=cp>#define GDVIRTUAL1(m_name, m_type1) \
+</span></span></span><span class=line><span class=cl><span class=cp>    virtual void m_name(m_type1 p_arg1) override; \
+</span></span></span><span class=line><span class=cl><span class=cp>    virtual bool _gdvirtual_##m_name##_call(m_type1 p_arg1) { \
+</span></span></span><span class=line><span class=cl><span class=cp>        if (SCRIPT_VIRTUAL_CALL(m_name)) { \
+</span></span></span><span class=line><span class=cl><span class=cp>            </span><span class=cm>/* 调用脚本版本 */</span><span class=cp> \
+</span></span></span><span class=line><span class=cl><span class=cp>            return true; \
+</span></span></span><span class=line><span class=cl><span class=cp>        } \
+</span></span></span><span class=line><span class=cl><span class=cp>        return false; \
+</span></span></span><span class=line><span class=cl><span class=cp>    }
+</span></span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=cp>#define GDVIRTUAL0R(m_ret, m_name) \
+</span></span></span><span class=line><span class=cl><span class=cp>    virtual m_ret m_name() override; \
+</span></span></span><span class=line><span class=cl><span class=cp>    virtual bool _gdvirtual_##m_name##_call(m_ret &amp;r_ret) { \
+</span></span></span><span class=line><span class=cl><span class=cp>        if (SCRIPT_VIRTUAL_CALL(m_name)) { \
+</span></span></span><span class=line><span class=cl><span class=cp>            </span><span class=cm>/* 调用脚本版本，结果存入 r_ret */</span><span class=cp> \
+</span></span></span><span class=line><span class=cl><span class=cp>            return true; \
+</span></span></span><span class=line><span class=cl><span class=cp>        } \
+</span></span></span><span class=line><span class=cl><span class=cp>        return false; \
+</span></span></span><span class=line><span class=cl><span class=cp>    }
+</span></span></span></code></pre></div><h4 id=223-node-中的使用>2.2.3 Node 中的使用</h4><blockquote><p><strong>证据等级 A</strong>：基于 <code>scene/main/node.h</code> 验证。</p></blockquote><div class=highlight><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=c1>// scene/main/node.h（简化）
+</span></span></span><span class=line><span class=cl><span class=k>class</span> <span class=nc>Node</span> <span class=o>:</span> <span class=k>public</span> <span class=n>CanvasItem</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=c1>// 脚本可覆盖的虚方法
+</span></span></span><span class=line><span class=cl>    <span class=n>GDVIRTUAL1</span><span class=p>(</span><span class=n>_notification</span><span class=p>,</span> <span class=kt>int</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=n>GDVIRTUAL0</span><span class=p>(</span><span class=n>_ready</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=n>GDVIRTUAL1</span><span class=p>(</span><span class=n>_enter_tree</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=n>GDVIRTUAL1</span><span class=p>(</span><span class=n>_exit_tree</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=n>GDVIRTUAL1R</span><span class=p>(</span><span class=kt>bool</span><span class=p>,</span> <span class=n>_get</span><span class=p>,</span> <span class=k>const</span> <span class=n>StringName</span> <span class=o>&amp;</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=n>GDVIRTUAL1</span><span class=p>(</span><span class=n>_input</span><span class=p>,</span> <span class=n>Ref</span><span class=o>&lt;</span><span class=n>InputEvent</span><span class=o>&gt;</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=n>GDVIRTUAL1</span><span class=p>(</span><span class=n>_process</span><span class=p>,</span> <span class=kt>double</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=n>GDVIRTUAL1</span><span class=p>(</span><span class=n>_physics_process</span><span class=p>,</span> <span class=kt>double</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=c1>// ...
+</span></span></span><span class=line><span class=cl><span class=p>};</span>
+</span></span></code></pre></div><h3 id=23-设计动机>2.3 设计动机</h3><ul><li><strong>脚本覆盖</strong>：允许 GDScript 重写 C++ 虚方法</li><li><strong>性能</strong>：未覆盖时直接调用 C++ 版本，无额外开销</li><li><strong>统一接口</strong>：C++ 与脚本通过同一套虚函数接口</li></ul><h3 id=24-调用机制>2.4 调用机制</h3><div class=highlight><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=c1>// Node::_ready 的实现（简化）
+</span></span></span><span class=line><span class=cl><span class=kt>void</span> <span class=n>Node</span><span class=o>::</span><span class=n>_ready</span><span class=p>()</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=c1>// 先尝试调用脚本版本
+</span></span></span><span class=line><span class=cl>    <span class=k>if</span> <span class=p>(</span><span class=n>_gdvirtual__ready_call</span><span class=p>())</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=k>return</span><span class=p>;</span> <span class=c1>// 脚本覆盖了，已执行
+</span></span></span><span class=line><span class=cl>    <span class=p>}</span>
+</span></span><span class=line><span class=cl>    <span class=c1>// 否则执行 C++ 默认实现（通常为空）
+</span></span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=c1>// GDScript 覆盖时
+</span></span></span><span class=line><span class=cl><span class=c1>// func _ready():
+</span></span></span><span class=line><span class=cl><span class=c1>//     print(&#34;Hello&#34;)
+</span></span></span><span class=line><span class=cl><span class=c1>// → _gdvirtual__ready_call() 返回 true，调用脚本版本
+</span></span></span></code></pre></div><h3 id=25-潜在陷阱>2.5 潜在陷阱</h3><ul><li>GDVIRTUAL 方法有轻微开销（检查脚本实例）</li><li>不要在构造函数中调用 GDVIRTUAL 方法（脚本未绑定）</li><li>覆盖时参数类型必须匹配</li></ul><hr><h2 id=三模板元编程与-methodbind>三、模板元编程与 MethodBind</h2><h3 id=31-技巧描述>3.1 技巧描述</h3><p>Godot 使用模板元编程为每个 C++ 方法生成类型安全的绑定代码。<code>MethodBind</code> 是抽象基类，<code>MethodBind0</code>、<code>MethodBind1</code>、&mldr;、<code>MethodBind5</code> 等模板子类根据参数数量特化，编译期生成参数转换代码。</p><h3 id=32-源码示例>3.2 源码示例</h3><blockquote><p><strong>证据等级 A</strong>：基于 <code>core/object/method_bind.h</code> 验证。</p></blockquote><div class=highlight><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=c1>// core/object/method_bind.h（简化）
+</span></span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=c1>// 抽象基类
+</span></span></span><span class=line><span class=cl><span class=k>class</span> <span class=nc>MethodBind</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=n>StringName</span> <span class=n>name</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=kt>int</span> <span class=n>argument_count</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=n>Variant</span><span class=o>::</span><span class=n>Type</span> <span class=o>*</span><span class=n>argument_types</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=c1>// ...
+</span></span></span><span class=line><span class=cl>    <span class=k>virtual</span> <span class=n>Variant</span> <span class=nf>call</span><span class=p>(</span><span class=n>Object</span> <span class=o>*</span><span class=n>p_object</span><span class=p>,</span> <span class=k>const</span> <span class=n>Variant</span> <span class=o>**</span><span class=n>p_args</span><span class=p>,</span> <span class=kt>int</span> <span class=n>p_argcount</span><span class=p>,</span> <span class=n>Callable</span><span class=o>::</span><span class=n>CallError</span> <span class=o>&amp;</span><span class=n>r_error</span><span class=p>)</span> <span class=o>=</span> <span class=mi>0</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=p>};</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=c1>// 0 参数模板
+</span></span></span><span class=line><span class=cl><span class=k>template</span> <span class=o>&lt;</span><span class=k>class</span> <span class=nc>T</span><span class=p>,</span> <span class=k>class</span> <span class=nc>R</span><span class=o>&gt;</span>
+</span></span><span class=line><span class=cl><span class=k>class</span> <span class=nc>MethodBind0</span> <span class=o>:</span> <span class=k>public</span> <span class=n>MethodBind</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=n>R</span> <span class=p>(</span><span class=n>T</span><span class=o>::*</span><span class=n>method</span><span class=p>)();</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=k>virtual</span> <span class=n>Variant</span> <span class=nf>call</span><span class=p>(</span><span class=n>Object</span> <span class=o>*</span><span class=n>p_object</span><span class=p>,</span> <span class=k>const</span> <span class=n>Variant</span> <span class=o>**</span><span class=n>p_args</span><span class=p>,</span> <span class=kt>int</span> <span class=n>p_argcount</span><span class=p>,</span> <span class=n>Callable</span><span class=o>::</span><span class=n>CallError</span> <span class=o>&amp;</span><span class=n>r_error</span><span class=p>)</span> <span class=k>override</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=n>r_error</span><span class=p>.</span><span class=n>error</span> <span class=o>=</span> <span class=n>Callable</span><span class=o>::</span><span class=n>CallError</span><span class=o>::</span><span class=n>CALL_OK</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>        <span class=k>return</span> <span class=n>Variant</span><span class=p>((</span><span class=k>static_cast</span><span class=o>&lt;</span><span class=n>T</span><span class=o>*&gt;</span><span class=p>(</span><span class=n>p_object</span><span class=p>)</span><span class=o>-&gt;*</span><span class=n>method</span><span class=p>)());</span>
+</span></span><span class=line><span class=cl>    <span class=p>}</span>
+</span></span><span class=line><span class=cl><span class=p>};</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=c1>// 1 参数模板
+</span></span></span><span class=line><span class=cl><span class=k>template</span> <span class=o>&lt;</span><span class=k>class</span> <span class=nc>T</span><span class=p>,</span> <span class=k>class</span> <span class=nc>R</span><span class=p>,</span> <span class=k>class</span> <span class=nc>P0</span><span class=o>&gt;</span>
+</span></span><span class=line><span class=cl><span class=k>class</span> <span class=nc>MethodBind1</span> <span class=o>:</span> <span class=k>public</span> <span class=n>MethodBind</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=n>R</span> <span class=p>(</span><span class=n>T</span><span class=o>::*</span><span class=n>method</span><span class=p>)(</span><span class=n>P0</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=k>virtual</span> <span class=n>Variant</span> <span class=nf>call</span><span class=p>(</span><span class=n>Object</span> <span class=o>*</span><span class=n>p_object</span><span class=p>,</span> <span class=k>const</span> <span class=n>Variant</span> <span class=o>**</span><span class=n>p_args</span><span class=p>,</span> <span class=kt>int</span> <span class=n>p_argcount</span><span class=p>,</span> <span class=n>Callable</span><span class=o>::</span><span class=n>CallError</span> <span class=o>&amp;</span><span class=n>r_error</span><span class=p>)</span> <span class=k>override</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=k>if</span> <span class=p>(</span><span class=n>p_argcount</span> <span class=o>!=</span> <span class=mi>1</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>            <span class=n>r_error</span><span class=p>.</span><span class=n>error</span> <span class=o>=</span> <span class=n>Callable</span><span class=o>::</span><span class=n>CallError</span><span class=o>::</span><span class=n>CALL_ERROR_TOO_FEW_ARGUMENTS</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>            <span class=k>return</span> <span class=n>Variant</span><span class=p>();</span>
+</span></span><span class=line><span class=cl>        <span class=p>}</span>
+</span></span><span class=line><span class=cl>        <span class=c1>// Variant → P0 转换
+</span></span></span><span class=line><span class=cl>        <span class=n>Variant</span><span class=o>::</span><span class=n>Type</span> <span class=n>t</span> <span class=o>=</span> <span class=n>p_args</span><span class=p>[</span><span class=mi>0</span><span class=p>]</span><span class=o>-&gt;</span><span class=n>get_type</span><span class=p>();</span>
+</span></span><span class=line><span class=cl>        <span class=k>if</span> <span class=p>(</span><span class=o>!</span><span class=n>Variant</span><span class=o>::</span><span class=n>can_convert</span><span class=p>(</span><span class=n>t</span><span class=p>,</span> <span class=n>Variant</span><span class=o>::</span><span class=n>Type</span><span class=o>::</span><span class=n>get_type_for</span><span class=o>&lt;</span><span class=n>P0</span><span class=o>&gt;</span><span class=p>()))</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>            <span class=n>r_error</span><span class=p>.</span><span class=n>error</span> <span class=o>=</span> <span class=n>Callable</span><span class=o>::</span><span class=n>CallError</span><span class=o>::</span><span class=n>CALL_ERROR_INVALID_ARGUMENT</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>            <span class=k>return</span> <span class=n>Variant</span><span class=p>();</span>
+</span></span><span class=line><span class=cl>        <span class=p>}</span>
+</span></span><span class=line><span class=cl>        <span class=n>P0</span> <span class=n>arg0</span> <span class=o>=</span> <span class=n>p_args</span><span class=p>[</span><span class=mi>0</span><span class=p>]</span><span class=o>-&gt;</span><span class=k>operator</span> <span class=n>P0</span><span class=p>();</span> <span class=c1>// 类型转换
+</span></span></span><span class=line><span class=cl>        <span class=k>return</span> <span class=n>Variant</span><span class=p>((</span><span class=k>static_cast</span><span class=o>&lt;</span><span class=n>T</span><span class=o>*&gt;</span><span class=p>(</span><span class=n>p_object</span><span class=p>)</span><span class=o>-&gt;*</span><span class=n>method</span><span class=p>)(</span><span class=n>arg0</span><span class=p>));</span>
+</span></span><span class=line><span class=cl>    <span class=p>}</span>
+</span></span><span class=line><span class=cl><span class=p>};</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=c1>// 工厂函数
+</span></span></span><span class=line><span class=cl><span class=k>template</span> <span class=o>&lt;</span><span class=k>class</span> <span class=nc>T</span><span class=p>,</span> <span class=k>class</span> <span class=nc>R</span><span class=o>&gt;</span>
+</span></span><span class=line><span class=cl><span class=n>MethodBind</span> <span class=o>*</span><span class=n>create_method_bind</span><span class=p>(</span><span class=n>R</span> <span class=p>(</span><span class=n>T</span><span class=o>::*</span><span class=n>p_method</span><span class=p>)())</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=n>MethodBind0</span><span class=o>&lt;</span><span class=n>T</span><span class=p>,</span> <span class=n>R</span><span class=o>&gt;</span> <span class=o>*</span><span class=n>mb</span> <span class=o>=</span> <span class=n>memnew</span><span class=p>(</span><span class=n>MethodBind0</span><span class=o>&lt;</span><span class=n>T</span><span class=p>,</span> <span class=n>R</span><span class=o>&gt;</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=n>mb</span><span class=o>-&gt;</span><span class=n>method</span> <span class=o>=</span> <span class=n>p_method</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=k>return</span> <span class=n>mb</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=k>template</span> <span class=o>&lt;</span><span class=k>class</span> <span class=nc>T</span><span class=p>,</span> <span class=k>class</span> <span class=nc>R</span><span class=p>,</span> <span class=k>class</span> <span class=nc>P0</span><span class=o>&gt;</span>
+</span></span><span class=line><span class=cl><span class=n>MethodBind</span> <span class=o>*</span><span class=n>create_method_bind</span><span class=p>(</span><span class=n>R</span> <span class=p>(</span><span class=n>T</span><span class=o>::*</span><span class=n>p_method</span><span class=p>)(</span><span class=n>P0</span><span class=p>))</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=n>MethodBind1</span><span class=o>&lt;</span><span class=n>T</span><span class=p>,</span> <span class=n>R</span><span class=p>,</span> <span class=n>P0</span><span class=o>&gt;</span> <span class=o>*</span><span class=n>mb</span> <span class=o>=</span> <span class=n>memnew</span><span class=p>(</span><span class=n>MethodBind1</span><span class=o>&lt;</span><span class=n>T</span><span class=p>,</span> <span class=n>R</span><span class=p>,</span> <span class=n>P0</span><span class=o>&gt;</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=n>mb</span><span class=o>-&gt;</span><span class=n>method</span> <span class=o>=</span> <span class=n>p_method</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=k>return</span> <span class=n>mb</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></div><h3 id=33-使用示例>3.3 使用示例</h3><div class=highlight><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=c1>// 在 Node::_bind_methods 中
+</span></span></span><span class=line><span class=cl><span class=n>ClassDB</span><span class=o>::</span><span class=n>bind_method</span><span class=p>(</span><span class=n>D_METHOD</span><span class=p>(</span><span class=s>&#34;add_child&#34;</span><span class=p>,</span> <span class=s>&#34;node&#34;</span><span class=p>),</span> <span class=o>&amp;</span><span class=n>Node</span><span class=o>::</span><span class=n>add_child</span><span class=p>);</span>
+</span></span><span class=line><span class=cl><span class=c1>// D_METHOD 宏生成方法名与参数名
+</span></span></span><span class=line><span class=cl><span class=c1>// create_method_bind 模板推导参数类型
+</span></span></span><span class=line><span class=cl><span class=c1>// ClassDB::bind_method 注册到 method_map
+</span></span></span></code></pre></div><h3 id=34-设计动机>3.4 设计动机</h3><ul><li><strong>类型安全</strong>：编译期生成转换代码，避免运行时类型判断</li><li><strong>性能</strong>：模板特化，无虚函数开销（除了 MethodBind 本身的一次）</li><li><strong>自动化</strong>：参数数量与类型由模板推导</li></ul><h3 id=35-潜在陷阱>3.5 潜在陷阱</h3><ul><li>模板膨胀：每个方法生成一个子类，增加代码体积</li><li>编译时间：模板实例化耗时</li><li>错误信息：模板错误难以阅读</li></ul><hr><h2 id=四引用计数与-refcounted>四、引用计数与 RefCounted</h2><h3 id=41-技巧描述>4.1 技巧描述</h3><p>Godot 的 <code>RefCounted</code> 类提供引用计数，配合 <code>Ref&lt;T></code> 智能指针实现自动内存管理。继承 RefCounted 的类（如 Resource、Image、Texture）通过引用计数自动释放。</p><h3 id=42-源码示例>4.2 源码示例</h3><blockquote><p><strong>证据等级 A</strong>：基于 <code>core/object/ref_counted.h</code> 验证。</p></blockquote><div class=highlight><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=c1>// core/object/ref_counted.h（简化）
+</span></span></span><span class=line><span class=cl><span class=k>class</span> <span class=nc>RefCounted</span> <span class=o>:</span> <span class=k>public</span> <span class=n>Object</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=n>SafeRefCount</span> <span class=n>refcount</span><span class=p>;</span> <span class=c1>// 原子引用计数
+</span></span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=k>public</span><span class=o>:</span>
+</span></span><span class=line><span class=cl>    <span class=kt>bool</span> <span class=n>ref</span><span class=p>()</span> <span class=p>{</span> <span class=k>return</span> <span class=n>refcount</span><span class=p>.</span><span class=n>ref</span><span class=p>()</span> <span class=o>!=</span> <span class=mi>0</span><span class=p>;</span> <span class=p>}</span>       <span class=c1>// 增加引用
+</span></span></span><span class=line><span class=cl>    <span class=kt>bool</span> <span class=nf>unref</span><span class=p>()</span> <span class=p>{</span>                                      <span class=c1>// 减少引用
+</span></span></span><span class=line><span class=cl>        <span class=k>if</span> <span class=p>(</span><span class=n>refcount</span><span class=p>.</span><span class=n>unref</span><span class=p>())</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>            <span class=n>_predelete</span><span class=p>();</span> <span class=c1>// 发送 PREDELETE 通知
+</span></span></span><span class=line><span class=cl>            <span class=n>memdelete</span><span class=p>(</span><span class=k>this</span><span class=p>);</span> <span class=c1>// 自杀
+</span></span></span><span class=line><span class=cl>            <span class=k>return</span> <span class=nb>true</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>        <span class=p>}</span>
+</span></span><span class=line><span class=cl>        <span class=k>return</span> <span class=nb>false</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=p>}</span>
+</span></span><span class=line><span class=cl>    <span class=kt>int</span> <span class=nf>get_reference_count</span><span class=p>()</span> <span class=k>const</span> <span class=p>{</span> <span class=k>return</span> <span class=n>refcount</span><span class=p>.</span><span class=n>get</span><span class=p>();</span> <span class=p>}</span>
+</span></span><span class=line><span class=cl><span class=p>};</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=c1>// 智能指针
+</span></span></span><span class=line><span class=cl><span class=k>template</span> <span class=o>&lt;</span><span class=k>class</span> <span class=nc>T</span><span class=o>&gt;</span>
+</span></span><span class=line><span class=cl><span class=k>class</span> <span class=nc>Ref</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=n>T</span> <span class=o>*</span><span class=n>reference</span> <span class=o>=</span> <span class=k>nullptr</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=kt>void</span> <span class=nf>ref_pointer</span><span class=p>(</span><span class=n>T</span> <span class=o>*</span><span class=n>p_ref</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=k>if</span> <span class=p>(</span><span class=n>p_ref</span><span class=p>)</span> <span class=n>p_ref</span><span class=o>-&gt;</span><span class=n>ref</span><span class=p>();</span> <span class=c1>// 增加引用
+</span></span></span><span class=line><span class=cl>        <span class=k>if</span> <span class=p>(</span><span class=n>reference</span><span class=p>)</span> <span class=n>reference</span><span class=o>-&gt;</span><span class=n>unref</span><span class=p>();</span> <span class=c1>// 减少旧引用
+</span></span></span><span class=line><span class=cl>        <span class=n>reference</span> <span class=o>=</span> <span class=n>p_ref</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=p>}</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=k>public</span><span class=o>:</span>
+</span></span><span class=line><span class=cl>    <span class=n>Ref</span><span class=p>()</span> <span class=p>{}</span>
+</span></span><span class=line><span class=cl>    <span class=n>Ref</span><span class=p>(</span><span class=n>T</span> <span class=o>*</span><span class=n>p_ref</span><span class=p>)</span> <span class=p>{</span> <span class=n>ref_pointer</span><span class=p>(</span><span class=n>p_ref</span><span class=p>);</span> <span class=p>}</span>
+</span></span><span class=line><span class=cl>    <span class=n>Ref</span><span class=p>(</span><span class=k>const</span> <span class=n>Ref</span><span class=o>&lt;</span><span class=n>T</span><span class=o>&gt;</span> <span class=o>&amp;</span><span class=n>p_other</span><span class=p>)</span> <span class=p>{</span> <span class=n>ref_pointer</span><span class=p>(</span><span class=n>p_other</span><span class=p>.</span><span class=n>reference</span><span class=p>);</span> <span class=p>}</span>
+</span></span><span class=line><span class=cl>    <span class=o>~</span><span class=n>Ref</span><span class=p>()</span> <span class=p>{</span> <span class=k>if</span> <span class=p>(</span><span class=n>reference</span><span class=p>)</span> <span class=n>reference</span><span class=o>-&gt;</span><span class=n>unref</span><span class=p>();</span> <span class=p>}</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=n>Ref</span><span class=o>&lt;</span><span class=n>T</span><span class=o>&gt;</span> <span class=o>&amp;</span><span class=k>operator</span><span class=o>=</span><span class=p>(</span><span class=k>const</span> <span class=n>Ref</span><span class=o>&lt;</span><span class=n>T</span><span class=o>&gt;</span> <span class=o>&amp;</span><span class=n>p_other</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=n>ref_pointer</span><span class=p>(</span><span class=n>p_other</span><span class=p>.</span><span class=n>reference</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>        <span class=k>return</span> <span class=o>*</span><span class=k>this</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=p>}</span>
+</span></span><span class=line><span class=cl>    <span class=c1>// ...
+</span></span></span><span class=line><span class=cl><span class=p>};</span>
+</span></span></code></pre></div><h3 id=43-使用示例>4.3 使用示例</h3><div class=highlight><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=c1>// 创建引用计数对象
+</span></span></span><span class=line><span class=cl><span class=n>Ref</span><span class=o>&lt;</span><span class=n>Image</span><span class=o>&gt;</span> <span class=n>img</span> <span class=o>=</span> <span class=n>memnew</span><span class=p>(</span><span class=n>Image</span><span class=p>);</span>
+</span></span><span class=line><span class=cl><span class=c1>// img 引用计数 = 1
+</span></span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=n>Ref</span><span class=o>&lt;</span><span class=n>Image</span><span class=o>&gt;</span> <span class=n>img2</span> <span class=o>=</span> <span class=n>img</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=c1>// img2 与 img 指向同一对象，引用计数 = 2
+</span></span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=n>img2</span><span class=p>.</span><span class=n>unref</span><span class=p>();</span>
+</span></span><span class=line><span class=cl><span class=c1>// 引用计数 = 1
+</span></span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=n>img</span><span class=p>.</span><span class=n>unref</span><span class=p>();</span>
+</span></span><span class=line><span class=cl><span class=c1>// 引用计数 = 0，自动 memdelete
+</span></span></span></code></pre></div><h3 id=44-设计动机>4.4 设计动机</h3><ul><li><strong>自动释放</strong>：无需手动 delete，避免泄漏</li><li><strong>线程安全</strong>：SafeRefCount 使用原子操作</li><li><strong>共享所有权</strong>：多个 Ref 共享同一对象</li></ul><h3 id=45-潜在陷阱>4.5 潜在陷阱</h3><ul><li><strong>循环引用</strong>：A 引用 B，B 引用 A，导致内存泄漏。Godot 不自动处理，需手动打破</li><li><strong>非 RefCounted 不能用 Ref</strong>：只有继承 RefCounted 的类才能用 Ref</li><li><strong>裸指针与 Ref 混用</strong>：从 Ref 取出裸指针后，Ref 释放会导致悬空指针</li></ul><hr><h2 id=五宏编程与-gdclass>五、宏编程与 GDCLASS</h2><h3 id=51-技巧描述>5.1 技巧描述</h3><p><code>GDCLASS</code> 是 Godot 最核心的宏，它为每个继承 Object 的类生成类型注册代码、虚函数实现、工厂函数。这个宏是 Godot 反射系统的基石。</p><h3 id=52-源码示例>5.2 源码示例</h3><blockquote><p><strong>证据等级 A</strong>：基于 <code>core/object/object.h:245-294</code> 验证。</p></blockquote><div class=highlight><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=c1>// core/object/object.h:245-294（简化）
+</span></span></span><span class=line><span class=cl><span class=cp>#define GDCLASS(m_class, m_inherits) \
+</span></span></span><span class=line><span class=cl><span class=cp>private: \
+</span></span></span><span class=line><span class=cl><span class=cp>    void operator=(const m_class &amp;p_rval) {} \
+</span></span></span><span class=line><span class=cl><span class=cp>    m_class(const m_class &amp;p_rval) {} \
+</span></span></span><span class=line><span class=cl><span class=cp>    \
+</span></span></span><span class=line><span class=cl><span class=cp>    friend class ::ClassDB; \
+</span></span></span><span class=line><span class=cl><span class=cp>    \
+</span></span></span><span class=line><span class=cl><span class=cp>public: \
+</span></span></span><span class=line><span class=cl><span class=cp>    virtual const StringName *_get_class_namev() const override { \
+</span></span></span><span class=line><span class=cl><span class=cp>        static StringName _class_name = #m_class; \
+</span></span></span><span class=line><span class=cl><span class=cp>        return &amp;_class_name; \
+</span></span></span><span class=line><span class=cl><span class=cp>    } \
+</span></span></span><span class=line><span class=cl><span class=cp>    \
+</span></span></span><span class=line><span class=cl><span class=cp>    static _FORCE_INLINE_ StringName get_class_static() { \
+</span></span></span><span class=line><span class=cl><span class=cp>        static StringName _class_name = #m_class; \
+</span></span></span><span class=line><span class=cl><span class=cp>        return _class_name; \
+</span></span></span><span class=line><span class=cl><span class=cp>    } \
+</span></span></span><span class=line><span class=cl><span class=cp>    \
+</span></span></span><span class=line><span class=cl><span class=cp>    static _FORCE_INLINE_ StringName get_parent_class_static() { \
+</span></span></span><span class=line><span class=cl><span class=cp>        return m_inherits::get_class_static(); \
+</span></span></span><span class=line><span class=cl><span class=cp>    } \
+</span></span></span><span class=line><span class=cl><span class=cp>    \
+</span></span></span><span class=line><span class=cl><span class=cp>    static void *get_class_ptr() { \
+</span></span></span><span class=line><span class=cl><span class=cp>        static int ptr; \
+</span></span></span><span class=line><span class=cl><span class=cp>        return &amp;ptr; \
+</span></span></span><span class=line><span class=cl><span class=cp>    } \
+</span></span></span><span class=line><span class=cl><span class=cp>    \
+</span></span></span><span class=line><span class=cl><span class=cp>    virtual bool is_class(const StringName &amp;p_class) const override { \
+</span></span></span><span class=line><span class=cl><span class=cp>        return (p_class == (#m_class)) ? true : m_inherits::is_class(p_class); \
+</span></span></span><span class=line><span class=cl><span class=cp>    } \
+</span></span></span><span class=line><span class=cl><span class=cp>    \
+</span></span></span><span class=line><span class=cl><span class=cp>    virtual bool is_class_ptr(void *p_ptr) const override { \
+</span></span></span><span class=line><span class=cl><span class=cp>        return get_class_ptr() == p_ptr ? true : m_inherits::is_class_ptr(p_ptr); \
+</span></span></span><span class=line><span class=cl><span class=cp>    } \
+</span></span></span><span class=line><span class=cl><span class=cp>    \
+</span></span></span><span class=line><span class=cl><span class=cp>    static void initialize_class() { \
+</span></span></span><span class=line><span class=cl><span class=cp>        static bool initialized = false; \
+</span></span></span><span class=line><span class=cl><span class=cp>        if (initialized) return; \
+</span></span></span><span class=line><span class=cl><span class=cp>        ERR_FAIL_COND(!ClassDB::is_parent_class(m_inherits::get_class_static(), #m_class)); \
+</span></span></span><span class=line><span class=cl><span class=cp>        m_inherits::initialize_class(); \
+</span></span></span><span class=line><span class=cl><span class=cp>        ClassDB::_add_class&lt;m_class&gt;(); \
+</span></span></span><span class=line><span class=cl><span class=cp>        if (m_class::_get_bind_methods() != m_inherits::_get_bind_methods()) { \
+</span></span></span><span class=line><span class=cl><span class=cp>            _bind_methods(); \
+</span></span></span><span class=line><span class=cl><span class=cp>        } \
+</span></span></span><span class=line><span class=cl><span class=cp>        initialized = true; \
+</span></span></span><span class=line><span class=cl><span class=cp>    } \
+</span></span></span><span class=line><span class=cl><span class=cp>    \
+</span></span></span><span class=line><span class=cl><span class=cp>    static _FORCE_INLINE_ const void *get_class_ptr_static() { \
+</span></span></span><span class=line><span class=cl><span class=cp>        static int ptr; \
+</span></span></span><span class=line><span class=cl><span class=cp>        return &amp;ptr; \
+</span></span></span><span class=line><span class=cl><span class=cp>    } \
+</span></span></span><span class=line><span class=cl><span class=cp>    \
+</span></span></span><span class=line><span class=cl><span class=cp>    static _FORCE_INLINE_ Object *create() { \
+</span></span></span><span class=line><span class=cl><span class=cp>        return memnew(m_class); \
+</span></span></span><span class=line><span class=cl><span class=cp>    } \
+</span></span></span><span class=line><span class=cl><span class=cp>    \
+</span></span></span><span class=line><span class=cl><span class=cp>    static _FORCE_INLINE_ bool can_instantiate() { \
+</span></span></span><span class=line><span class=cl><span class=cp>        return true; \
+</span></span></span><span class=line><span class=cl><span class=cp>    } \
+</span></span></span><span class=line><span class=cl><span class=cp>    \
+</span></span></span><span class=line><span class=cl><span class=cp>protected: \
+</span></span></span><span class=line><span class=cl><span class=cp>    virtual void _notificationv(int p_notification, bool p_reversed) override { \
+</span></span></span><span class=line><span class=cl><span class=cp>        m_inherits::_notificationv(p_notification, p_reversed); \
+</span></span></span><span class=line><span class=cl><span class=cp>        if (p_reversed) { \
+</span></span></span><span class=line><span class=cl><span class=cp>            m_class::_notification_backward(p_notification); \
+</span></span></span><span class=line><span class=cl><span class=cp>        } else { \
+</span></span></span><span class=line><span class=cl><span class=cp>            m_class::_notification_forward(p_notification); \
+</span></span></span><span class=line><span class=cl><span class=cp>        } \
+</span></span></span><span class=line><span class=cl><span class=cp>    } \
+</span></span></span><span class=line><span class=cl><span class=cp>    \
+</span></span></span><span class=line><span class=cl><span class=cp>    static void _bind_methods(); \
+</span></span></span><span class=line><span class=cl><span class=cp>    \
+</span></span></span><span class=line><span class=cl><span class=cp>    _FORCE_INLINE_ static bool _is_gdvirtual_enabled() { return true; }
+</span></span></span></code></pre></div><h3 id=53-使用示例>5.3 使用示例</h3><div class=highlight><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=c1>// 头文件
+</span></span></span><span class=line><span class=cl><span class=k>class</span> <span class=nc>Node</span> <span class=o>:</span> <span class=k>public</span> <span class=n>CanvasItem</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=n>GDCLASS</span><span class=p>(</span><span class=n>Node</span><span class=p>,</span> <span class=n>CanvasItem</span><span class=p>);</span> <span class=c1>// 注册到 ClassDB
+</span></span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=c1>// ...
+</span></span></span><span class=line><span class=cl><span class=k>protected</span><span class=o>:</span>
+</span></span><span class=line><span class=cl>    <span class=k>static</span> <span class=kt>void</span> <span class=n>_bind_methods</span><span class=p>();</span>
+</span></span><span class=line><span class=cl><span class=p>};</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=c1>// 源文件
+</span></span></span><span class=line><span class=cl><span class=kt>void</span> <span class=n>Node</span><span class=o>::</span><span class=n>_bind_methods</span><span class=p>()</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=n>ClassDB</span><span class=o>::</span><span class=n>bind_method</span><span class=p>(</span><span class=n>D_METHOD</span><span class=p>(</span><span class=s>&#34;add_child&#34;</span><span class=p>,</span> <span class=s>&#34;node&#34;</span><span class=p>),</span> <span class=o>&amp;</span><span class=n>Node</span><span class=o>::</span><span class=n>add_child</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=n>ClassDB</span><span class=o>::</span><span class=n>bind_method</span><span class=p>(</span><span class=n>D_METHOD</span><span class=p>(</span><span class=s>&#34;get_child&#34;</span><span class=p>,</span> <span class=s>&#34;idx&#34;</span><span class=p>),</span> <span class=o>&amp;</span><span class=n>Node</span><span class=o>::</span><span class=n>get_child</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=c1>// ...
+</span></span></span><span class=line><span class=cl>    <span class=n>ADD_SIGNAL</span><span class=p>(</span><span class=n>MethodInfo</span><span class=p>(</span><span class=s>&#34;child_entered_tree&#34;</span><span class=p>,</span> <span class=n>PropertyInfo</span><span class=p>(</span><span class=n>Variant</span><span class=o>::</span><span class=n>OBJECT</span><span class=p>,</span> <span class=s>&#34;node&#34;</span><span class=p>)));</span>
+</span></span><span class=line><span class=cl>    <span class=n>ADD_SIGNAL</span><span class=p>(</span><span class=n>MethodInfo</span><span class=p>(</span><span class=s>&#34;tree_entered&#34;</span><span class=p>));</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></div><h3 id=54-gdclass-生成的功能>5.4 GDCLASS 生成的功能</h3><table><thead><tr><th>功能</th><th>说明</th></tr></thead><tbody><tr><td><code>_get_class_namev()</code></td><td>虚函数，返回类名</td></tr><tr><td><code>get_class_static()</code></td><td>静态获取类名</td></tr><tr><td><code>get_parent_class_static()</code></td><td>静态获取父类名</td></tr><tr><td><code>is_class()</code></td><td>沿继承链检查类型</td></tr><tr><td><code>is_class_ptr()</code></td><td>指针比较检查类型（快速）</td></tr><tr><td><code>initialize_class()</code></td><td>初始化类（注册到 ClassDB）</td></tr><tr><td><code>create()</code></td><td>工厂函数，创建实例</td></tr><tr><td><code>_notificationv()</code></td><td>通知分发（沿继承链）</td></tr><tr><td><code>_bind_methods()</code></td><td>绑定方法与信号（用户实现）</td></tr></tbody></table><h3 id=55-设计动机>5.5 设计动机</h3><ul><li><strong>自动化</strong>：避免手写大量样板代码</li><li><strong>类型安全</strong>：编译期生成，类型检查</li><li><strong>反射支持</strong>：为 ClassDB 提供类型信息</li></ul><h3 id=56-潜在陷阱>5.6 潜在陷阱</h3><ul><li><strong>必须继承 Object</strong>：GDCLASS 只对 Object 子类有效</li><li><strong><code>_bind_methods</code> 必须实现</strong>：即使为空</li><li><strong>多继承不支持</strong>：Godot 不支持多继承（接口除外）</li><li><strong>构造函数不能调用虚函数</strong>：此时虚函数表未就绪</li></ul><hr><h2 id=六variant-动态类型>六、Variant 动态类型</h2><h3 id=61-技巧描述>6.1 技巧描述</h3><p><code>Variant</code> 是 Godot 的动态类型，可以持有 27 种不同类型的值。它使用 union 节省内存，通过 Type 枚举区分实际类型，并提供类型转换操作符。</p><h3 id=62-源码示例>6.2 源码示例</h3><blockquote><p><strong>证据等级 A</strong>：基于 <code>core/variant/variant.h:255-340</code> 验证。</p></blockquote><div class=highlight><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=c1>// core/variant/variant.h:255-340（简化）
+</span></span></span><span class=line><span class=cl><span class=k>class</span> <span class=nc>Variant</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl><span class=k>public</span><span class=o>:</span>
+</span></span><span class=line><span class=cl>    <span class=k>enum</span> <span class=nc>Type</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=n>NIL</span> <span class=o>=</span> <span class=mi>0</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>        <span class=n>BOOL</span><span class=p>,</span> <span class=n>INT</span><span class=p>,</span> <span class=n>FLOAT</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>        <span class=n>VECTOR2</span><span class=p>,</span> <span class=n>VECTOR2I</span><span class=p>,</span> <span class=n>RECT2</span><span class=p>,</span> <span class=n>RECT2I</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>        <span class=n>VECTOR3</span><span class=p>,</span> <span class=n>VECTOR3I</span><span class=p>,</span> <span class=n>TRANSFORM2D</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>        <span class=n>VECTOR4</span><span class=p>,</span> <span class=n>VECTOR4I</span><span class=p>,</span> <span class=n>PLANE</span><span class=p>,</span> <span class=n>QUATERNION</span><span class=p>,</span> <span class=n>AABB</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>        <span class=n>BASIS</span><span class=p>,</span> <span class=n>TRANSFORM3D</span><span class=p>,</span> <span class=n>PROJECTION</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>        <span class=n>COLOR</span><span class=p>,</span> <span class=n>STRING</span><span class=p>,</span> <span class=n>STRING_NAME</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>        <span class=n>NODE_PATH</span><span class=p>,</span> <span class=n>RID</span><span class=p>,</span> <span class=n>OBJECT</span><span class=p>,</span> <span class=n>CALLABLE</span><span class=p>,</span> <span class=n>SIGNAL</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>        <span class=n>DICTIONARY</span><span class=p>,</span> <span class=n>ARRAY</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>        <span class=n>PACKED_BYTE_ARRAY</span><span class=p>,</span> <span class=n>PACKED_INT32_ARRAY</span><span class=p>,</span> <span class=n>PACKED_INT64_ARRAY</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>        <span class=n>PACKED_FLOAT32_ARRAY</span><span class=p>,</span> <span class=n>PACKED_FLOAT64_ARRAY</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>        <span class=n>PACKED_STRING_ARRAY</span><span class=p>,</span> <span class=n>PACKED_VECTOR2_ARRAY</span><span class=p>,</span> <span class=n>PACKED_VECTOR3_ARRAY</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>        <span class=n>PACKED_COLOR_ARRAY</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>        <span class=n>VARIANT_MAX</span>
+</span></span><span class=line><span class=cl>    <span class=p>};</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=k>private</span><span class=o>:</span>
+</span></span><span class=line><span class=cl>    <span class=n>Type</span> <span class=n>type</span> <span class=o>=</span> <span class=n>NIL</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=c1>// union 节省内存
+</span></span></span><span class=line><span class=cl>    <span class=k>union</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=kt>bool</span> <span class=n>_bool</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>        <span class=kt>int64_t</span> <span class=n>_int</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>        <span class=kt>double</span> <span class=n>_float</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>        <span class=n>Transform2D</span> <span class=o>*</span><span class=n>_transform2d</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>        <span class=n>Vector3</span> <span class=o>*</span><span class=n>_vector3</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>        <span class=c1>// ...
+</span></span></span><span class=line><span class=cl>        <span class=n>ObjData</span> <span class=n>_get_obj</span><span class=p>;</span> <span class=c1>// Object 引用
+</span></span></span><span class=line><span class=cl>    <span class=p>}</span> <span class=n>_data</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=c1>// 类型转换操作符
+</span></span></span><span class=line><span class=cl>    <span class=k>operator</span> <span class=nf>bool</span><span class=p>()</span> <span class=k>const</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=k>operator</span> <span class=nf>int64_t</span><span class=p>()</span> <span class=k>const</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=k>operator</span> <span class=nf>double</span><span class=p>()</span> <span class=k>const</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=k>operator</span> <span class=nf>Vector2</span><span class=p>()</span> <span class=k>const</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=k>operator</span> <span class=n>Object</span> <span class=o>*</span><span class=p>()</span> <span class=k>const</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=c1>// ...
+</span></span></span><span class=line><span class=cl><span class=p>};</span>
+</span></span></code></pre></div><h3 id=63-类型转换>6.3 类型转换</h3><blockquote><p><strong>证据等级 A</strong>：基于 <code>core/variant/variant.cpp</code> 验证。</p></blockquote><div class=highlight><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=c1>// core/variant/variant.cpp（简化）
+</span></span></span><span class=line><span class=cl><span class=n>Variant</span><span class=o>::</span><span class=k>operator</span> <span class=kt>int64_t</span><span class=p>()</span> <span class=k>const</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=k>switch</span> <span class=p>(</span><span class=n>type</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=k>case</span> <span class=nl>INT</span><span class=p>:</span> <span class=k>return</span> <span class=n>_data</span><span class=p>.</span><span class=n>_int</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>        <span class=k>case</span> <span class=nl>FLOAT</span><span class=p>:</span> <span class=k>return</span> <span class=p>(</span><span class=kt>int64_t</span><span class=p>)</span><span class=n>_data</span><span class=p>.</span><span class=n>_float</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>        <span class=k>case</span> <span class=nl>BOOL</span><span class=p>:</span> <span class=k>return</span> <span class=n>_data</span><span class=p>.</span><span class=n>_bool</span> <span class=o>?</span> <span class=mi>1</span> <span class=o>:</span> <span class=mi>0</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>        <span class=k>case</span> <span class=nl>STRING</span><span class=p>:</span> <span class=k>return</span> <span class=n>String</span><span class=p>(</span><span class=o>*</span><span class=k>this</span><span class=p>).</span><span class=n>to_int</span><span class=p>();</span>
+</span></span><span class=line><span class=cl>        <span class=c1>// ...
+</span></span></span><span class=line><span class=cl>    <span class=p>}</span>
+</span></span><span class=line><span class=cl>    <span class=k>return</span> <span class=mi>0</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></div><h3 id=64-设计动机>6.4 设计动机</h3><ul><li><strong>动态类型</strong>：支持脚本语言的动态特性</li><li><strong>内存高效</strong>：union 共享内存，sizeof(Variant) 约 20-24 字节</li><li><strong>类型安全</strong>：Type 枚举区分，转换有检查</li></ul><h3 id=65-潜在陷阱>6.5 潜在陷阱</h3><ul><li><strong>隐式转换</strong>：Variant 之间会隐式转换，可能丢失精度</li><li><strong>Object 引用</strong>：Variant 持有 Object 裸指针，不增加引用计数（除非是 RefCounted）</li><li><strong>PackedArray</strong>：数组的 COW（写时复制），修改时需注意</li></ul><hr><h2 id=七内存管理宏-memnewmemdelete>七、内存管理宏 memnew/memdelete</h2><h3 id=71-技巧描述>7.1 技巧描述</h3><p>Godot 不直接使用 <code>new</code>/<code>delete</code>，而是用 <code>memnew</code>/<code>memdelete</code> 宏。这些宏在分配内存时记录调用位置，便于内存泄漏检测与统计。</p><h3 id=72-源码示例>7.2 源码示例</h3><blockquote><p><strong>证据等级 A</strong>：基于 <code>core/os/memory.h</code> 验证。</p></blockquote><div class=highlight><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=c1>// core/os/memory.h（简化）
+</span></span></span><span class=line><span class=cl><span class=cp>#define memnew(m_class) new (&#34;&#34;, __FILE__, __LINE__) m_class
+</span></span></span><span class=line><span class=cl><span class=cp>#define memdelete(m_obj) delete m_obj
+</span></span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=c1>// 全局 new/delete 重载
+</span></span></span><span class=line><span class=cl><span class=kt>void</span> <span class=o>*</span><span class=k>operator</span> <span class=nf>new</span><span class=p>(</span><span class=n>size_t</span> <span class=n>p_size</span><span class=p>,</span> <span class=k>const</span> <span class=kt>char</span> <span class=o>*</span><span class=n>p_description</span><span class=p>,</span> <span class=k>const</span> <span class=kt>char</span> <span class=o>*</span><span class=n>p_file</span><span class=p>,</span> <span class=kt>long</span> <span class=n>p_line</span><span class=p>);</span>
+</span></span><span class=line><span class=cl><span class=kt>void</span> <span class=k>operator</span> <span class=nf>delete</span><span class=p>(</span><span class=kt>void</span> <span class=o>*</span><span class=n>p_ptr</span><span class=p>,</span> <span class=k>const</span> <span class=kt>char</span> <span class=o>*</span><span class=n>p_description</span><span class=p>,</span> <span class=k>const</span> <span class=kt>char</span> <span class=o>*</span><span class=n>p_file</span><span class=p>,</span> <span class=kt>long</span> <span class=n>p_line</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=c1>// 默认版本
+</span></span></span><span class=line><span class=cl><span class=kt>void</span> <span class=o>*</span><span class=k>operator</span> <span class=nf>new</span><span class=p>(</span><span class=n>size_t</span> <span class=n>p_size</span><span class=p>);</span>
+</span></span><span class=line><span class=cl><span class=kt>void</span> <span class=k>operator</span> <span class=nf>delete</span><span class=p>(</span><span class=kt>void</span> <span class=o>*</span><span class=n>p_ptr</span><span class=p>);</span>
+</span></span></code></pre></div><h3 id=73-使用示例>7.3 使用示例</h3><div class=highlight><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=c1>// 创建
+</span></span></span><span class=line><span class=cl><span class=n>Node</span> <span class=o>*</span><span class=n>node</span> <span class=o>=</span> <span class=n>memnew</span><span class=p>(</span><span class=n>Node</span><span class=p>);</span>
+</span></span><span class=line><span class=cl><span class=n>Object</span> <span class=o>*</span><span class=n>obj</span> <span class=o>=</span> <span class=n>memnew</span><span class=p>(</span><span class=n>Object</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=c1>// 释放
+</span></span></span><span class=line><span class=cl><span class=n>memdelete</span><span class=p>(</span><span class=n>node</span><span class=p>);</span>
+</span></span><span class=line><span class=cl><span class=n>memdelete</span><span class=p>(</span><span class=n>obj</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=c1>// placement new（在预分配内存上构造）
+</span></span></span><span class=line><span class=cl><span class=kt>void</span> <span class=o>*</span><span class=n>buf</span> <span class=o>=</span> <span class=n>memalloc</span><span class=p>(</span><span class=k>sizeof</span><span class=p>(</span><span class=n>Node</span><span class=p>));</span>
+</span></span><span class=line><span class=cl><span class=n>Node</span> <span class=o>*</span><span class=n>node</span> <span class=o>=</span> <span class=n>memnew_placement</span><span class=p>(</span><span class=n>buf</span><span class=p>,</span> <span class=n>Node</span><span class=p>);</span>
+</span></span><span class=line><span class=cl><span class=c1>// ...
+</span></span></span><span class=line><span class=cl><span class=n>memdelete</span><span class=p>(</span><span class=n>node</span><span class=p>);</span>
+</span></span></code></pre></div><h3 id=74-设计动机>7.4 设计动机</h3><ul><li><strong>泄漏检测</strong>：DEBUG 模式下记录分配位置</li><li><strong>内存统计</strong>：跟踪内存使用</li><li><strong>自定义分配器</strong>：可替换底层分配器</li></ul><h3 id=75-潜在陷阱>7.5 潜在陷阱</h3><ul><li><strong>必须配对</strong>：memnew 必须用 memdelete 释放，不能用 free</li><li><strong>RefCounted 不直接 delete</strong>：引用计数归零时自动 delete</li><li><strong>placement new</strong>：memnew_placement 后必须手动调用析构</li></ul><hr><h2 id=八force_-强制内联>八、<em>FORCE_INLINE</em> 强制内联</h2><h3 id=81-技巧描述>8.1 技巧描述</h3><p><code>_FORCE_INLINE_</code> 是编译器特定的强制内联宏，用于性能关键的小函数。</p><h3 id=82-源码示例>8.2 源码示例</h3><blockquote><p><strong>证据等级 A</strong>：基于 <code>core/os/memory.h</code> 验证。</p></blockquote><div class=highlight><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=c1>// core/os/memory.h（简化）
+</span></span></span><span class=line><span class=cl><span class=cp>#if defined(__GNUC__)
+</span></span></span><span class=line><span class=cl><span class=cp>#define _FORCE_INLINE_ __attribute__((always_inline)) inline
+</span></span></span><span class=line><span class=cl><span class=cp>#elif defined(_MSC_VER)
+</span></span></span><span class=line><span class=cl><span class=cp>#define _FORCE_INLINE_ __forceinline
+</span></span></span><span class=line><span class=cl><span class=cp>#else
+</span></span></span><span class=line><span class=cl><span class=cp>#define _FORCE_INLINE_ inline
+</span></span></span><span class=line><span class=cl><span class=cp>#endif
+</span></span></span></code></pre></div><h3 id=83-使用场景>8.3 使用场景</h3><div class=highlight><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=c1>// 热点函数
+</span></span></span><span class=line><span class=cl><span class=n>_FORCE_INLINE_</span> <span class=kt>int</span> <span class=n>Vector2i</span><span class=o>::</span><span class=n>get_x</span><span class=p>()</span> <span class=k>const</span> <span class=p>{</span> <span class=k>return</span> <span class=n>x</span><span class=p>;</span> <span class=p>}</span>
+</span></span><span class=line><span class=cl><span class=n>_FORCE_INLINE_</span> <span class=k>const</span> <span class=n>StringName</span> <span class=o>&amp;</span><span class=n>Object</span><span class=o>::</span><span class=n>get_class_name</span><span class=p>()</span> <span class=k>const</span> <span class=p>{</span> <span class=k>return</span> <span class=o>*</span><span class=nf>_get_class_namev</span><span class=p>();</span> <span class=p>}</span>
+</span></span><span class=line><span class=cl><span class=n>_FORCE_INLINE_</span> <span class=kt>void</span> <span class=n>Object</span><span class=o>::</span><span class=n>notification</span><span class=p>(</span><span class=kt>int</span> <span class=n>p_notification</span><span class=p>,</span> <span class=kt>bool</span> <span class=n>p_reversed</span> <span class=o>=</span> <span class=nb>false</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=c1>// ...
+</span></span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></div><h3 id=84-设计动机>8.4 设计动机</h3><ul><li><strong>性能</strong>：消除函数调用开销</li><li><strong>确定性</strong>：确保关键函数被内联</li></ul><h3 id=85-潜在陷阱>8.5 潜在陷阱</h3><ul><li><strong>代码膨胀</strong>：过度使用增大二进制体积</li><li><strong>调试困难</strong>：内联函数无法设断点</li><li><strong>编译器限制</strong>：递归函数、大函数可能无法内联</li></ul><hr><h2 id=九crtp-与零开销抽象>九、CRTP 与零开销抽象</h2><h3 id=91-技巧描述>9.1 技巧描述</h3><p>Godot 在部分模板类中使用 CRTP（Curiously Recurring Template Pattern）实现静态多态，避免虚函数开销。</p><h3 id=92-源码示例>9.2 源码示例</h3><blockquote><p><strong>证据等级 B</strong>：基于源码模式观察。</p></blockquote><div class=highlight><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=c1>// 简化示例（Godot 风格）
+</span></span></span><span class=line><span class=cl><span class=k>template</span> <span class=o>&lt;</span><span class=k>class</span> <span class=nc>Derived</span><span class=o>&gt;</span>
+</span></span><span class=line><span class=cl><span class=k>class</span> <span class=nc>RendererBase</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl><span class=k>public</span><span class=o>:</span>
+</span></span><span class=line><span class=cl>    <span class=kt>void</span> <span class=n>render</span><span class=p>()</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=c1>// 静态多态，编译期确定
+</span></span></span><span class=line><span class=cl>        <span class=k>static_cast</span><span class=o>&lt;</span><span class=n>Derived</span><span class=o>*&gt;</span><span class=p>(</span><span class=k>this</span><span class=p>)</span><span class=o>-&gt;</span><span class=n>render_impl</span><span class=p>();</span>
+</span></span><span class=line><span class=cl>    <span class=p>}</span>
+</span></span><span class=line><span class=cl><span class=p>};</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=k>class</span> <span class=nc>RendererForward</span> <span class=o>:</span> <span class=k>public</span> <span class=n>RendererBase</span><span class=o>&lt;</span><span class=n>RendererForward</span><span class=o>&gt;</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl><span class=k>public</span><span class=o>:</span>
+</span></span><span class=line><span class=cl>    <span class=kt>void</span> <span class=n>render_impl</span><span class=p>()</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=c1>// 具体实现
+</span></span></span><span class=line><span class=cl>    <span class=p>}</span>
+</span></span><span class=line><span class=cl><span class=p>};</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=c1>// 调用
+</span></span></span><span class=line><span class=cl><span class=n>RendererForward</span> <span class=n>r</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=n>r</span><span class=p>.</span><span class=n>render</span><span class=p>();</span> <span class=c1>// 直接调用 render_impl，无虚函数开销
+</span></span></span></code></pre></div><h3 id=93-设计动机>9.3 设计动机</h3><ul><li><strong>零开销</strong>：编译期解析，无虚函数表查找</li><li><strong>类型安全</strong>：编译期类型检查</li></ul><h3 id=94-潜在陷阱>9.4 潜在陷阱</h3><ul><li><strong>代码膨胀</strong>：每个 Derived 生成一份代码</li><li><strong>灵活性差</strong>：不能运行时切换实现</li></ul><hr><h2 id=十pimpl-指针与封装>十、PIMPL 指针与封装</h2><h3 id=101-技巧描述>10.1 技巧描述</h3><p>Godot 在部分类中使用 PIMPL（Pointer to Implementation）模式，将实现细节隐藏在 .cpp 文件中，头文件只暴露指针。</p><h3 id=102-源码示例>10.2 源码示例</h3><blockquote><p><strong>证据等级 B</strong>：基于源码模式观察。</p></blockquote><div class=highlight><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=c1>// 头文件
+</span></span></span><span class=line><span class=cl><span class=k>class</span> <span class=nc>RenderingDevice</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=k>class</span> <span class=nc>Internal</span><span class=p>;</span> <span class=c1>// 前向声明
+</span></span></span><span class=line><span class=cl>    <span class=n>Internal</span> <span class=o>*</span><span class=n>internal</span><span class=p>;</span> <span class=c1>// 指针
+</span></span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=k>public</span><span class=o>:</span>
+</span></span><span class=line><span class=cl>    <span class=kt>void</span> <span class=n>draw</span><span class=p>();</span>
+</span></span><span class=line><span class=cl>    <span class=c1>// ...
+</span></span></span><span class=line><span class=cl><span class=p>};</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=c1>// 源文件
+</span></span></span><span class=line><span class=cl><span class=k>class</span> <span class=nc>RenderingDevice</span><span class=o>::</span><span class=n>Internal</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl><span class=k>public</span><span class=o>:</span>
+</span></span><span class=line><span class=cl>    <span class=n>VkDevice</span> <span class=n>device</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=n>VkQueue</span> <span class=n>queue</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=c1>// ... Vulkan 特定细节
+</span></span></span><span class=line><span class=cl><span class=p>};</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=kt>void</span> <span class=n>RenderingDevice</span><span class=o>::</span><span class=n>draw</span><span class=p>()</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=n>internal</span><span class=o>-&gt;</span><span class=p>...</span> <span class=c1>// 使用内部实现
+</span></span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></div><h3 id=103-设计动机>10.3 设计动机</h3><ul><li><strong>ABI 稳定</strong>：修改实现不改变头文件</li><li><strong>编译速度</strong>：依赖方无需重新编译</li><li><strong>封装</strong>：隐藏平台特定细节</li></ul><h3 id=104-潜在陷阱>10.4 潜在陷阱</h3><ul><li><strong>额外分配</strong>：需要动态分配 Internal</li><li><strong>间接访问</strong>：多一次指针解引用</li></ul><hr><h2 id=十一错误处理宏>十一、错误处理宏</h2><h3 id=111-技巧描述>11.1 技巧描述</h3><p>Godot 使用宏统一错误处理，提供 <code>ERR_FAIL_*</code>、<code>ERR_FAIL_COND_*</code>、<code>ERR_FAIL_V_*</code> 等系列宏。</p><h3 id=112-源码示例>11.2 源码示例</h3><blockquote><p><strong>证据等级 A</strong>：基于 <code>core/error/error_macros.h</code> 验证。</p></blockquote><div class=highlight><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=c1>// core/error/error_macros.h（简化）
+</span></span></span><span class=line><span class=cl><span class=cp>#define ERR_FAIL_INDEX(m_index, m_size) \
+</span></span></span><span class=line><span class=cl><span class=cp>    if (unlikely((m_index) &lt; 0 || (m_index) &gt;= (m_size))) { \
+</span></span></span><span class=line><span class=cl><span class=cp>        _err_print_error(FUNCTION_STR, __FILE__, __LINE__, \
+</span></span></span><span class=line><span class=cl><span class=cp>            &#34;Index &#34; + itos(m_index) + &#34; out of size &#34; + itos(m_size)); \
+</span></span></span><span class=line><span class=cl><span class=cp>        return; \
+</span></span></span><span class=line><span class=cl><span class=cp>    }
+</span></span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=cp>#define ERR_FAIL_NULL(m_param) \
+</span></span></span><span class=line><span class=cl><span class=cp>    if (unlikely(m_param == nullptr)) { \
+</span></span></span><span class=line><span class=cl><span class=cp>        _err_print_error(FUNCTION_STR, __FILE__, __LINE__, \
+</span></span></span><span class=line><span class=cl><span class=cp>            &#34;Parameter is null: &#34; #m_param); \
+</span></span></span><span class=line><span class=cl><span class=cp>        return; \
+</span></span></span><span class=line><span class=cl><span class=cp>    }
+</span></span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=cp>#define ERR_FAIL_COND(m_cond) \
+</span></span></span><span class=line><span class=cl><span class=cp>    if (unlikely(m_cond)) { \
+</span></span></span><span class=line><span class=cl><span class=cp>        _err_print_error(FUNCTION_STR, __FILE__, __LINE__, \
+</span></span></span><span class=line><span class=cl><span class=cp>            &#34;Condition failed: &#34; #m_cond); \
+</span></span></span><span class=line><span class=cl><span class=cp>        return; \
+</span></span></span><span class=line><span class=cl><span class=cp>    }
+</span></span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=cp>#define ERR_FAIL_V(m_retval) \
+</span></span></span><span class=line><span class=cl><span class=cp>    { _err_print_error(FUNCTION_STR, __FILE__, __LINE__, &#34;Failed&#34;); return m_retval; }
+</span></span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=cp>#define ERR_FAIL_V_MSG(m_retval, m_msg) \
+</span></span></span><span class=line><span class=cl><span class=cp>    { _err_print_error(FUNCTION_STR, __FILE__, __LINE__, m_msg); return m_retval; }
+</span></span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=cp>#define CRASH_NOW() \
+</span></span></span><span class=line><span class=cl><span class=cp>    _err_print_error(FUNCTION_STR, __FILE__, __LINE__, &#34;FATAL: Crashed&#34;); \
+</span></span></span><span class=line><span class=cl><span class=cp>    _err_flush_stdout(); \
+</span></span></span><span class=line><span class=cl><span class=cp>    _err_crash();
+</span></span></span></code></pre></div><h3 id=113-使用示例>11.3 使用示例</h3><div class=highlight><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=kt>void</span> <span class=n>Node</span><span class=o>::</span><span class=n>add_child</span><span class=p>(</span><span class=n>Node</span> <span class=o>*</span><span class=n>p_child</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=n>ERR_FAIL_NULL</span><span class=p>(</span><span class=n>p_child</span><span class=p>);</span> <span class=c1>// 空指针，打印错误并返回
+</span></span></span><span class=line><span class=cl>    <span class=n>ERR_FAIL_COND</span><span class=p>(</span><span class=n>p_child</span> <span class=o>==</span> <span class=k>this</span><span class=p>);</span> <span class=c1>// 不能添加自己
+</span></span></span><span class=line><span class=cl>    <span class=n>ERR_FAIL_COND_MSG</span><span class=p>(</span><span class=n>p_child</span><span class=o>-&gt;</span><span class=n>parent</span><span class=p>,</span> <span class=s>&#34;Child already has parent&#34;</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=c1>// ...
+</span></span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=n>Variant</span> <span class=n>Object</span><span class=o>::</span><span class=n>callp</span><span class=p>(</span><span class=k>const</span> <span class=n>StringName</span> <span class=o>&amp;</span><span class=n>p_method</span><span class=p>,</span> <span class=p>...)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=c1>// ...
+</span></span></span><span class=line><span class=cl>    <span class=n>ERR_FAIL_V</span><span class=p>(</span><span class=n>Variant</span><span class=p>());</span> <span class=c1>// 失败返回默认值
+</span></span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></div><h3 id=114-设计动机>11.4 设计动机</h3><ul><li><strong>统一错误处理</strong>：所有错误走同一套机制</li><li><strong>调试信息</strong>：自动记录文件、行号、函数</li><li><strong>防御性编程</strong>：前置条件检查</li></ul><h3 id=115-潜在陷阱>11.5 潜在陷阱</h3><ul><li><strong>DEBUG 断言</strong>：<code>DEV_ASSERT</code> 只在 dev_build 生效</li><li><strong>CRASH_NOW</strong>：直接崩溃，仅用于不可恢复错误</li><li><strong>性能</strong>：<code>unlikely</code> 提示分支预测，但仍有开销</li></ul><hr><h2 id=十二stringname-与字符串池>十二、StringName 与字符串池</h2><h3 id=121-技巧描述>12.1 技巧描述</h3><p><code>StringName</code> 是 Godot 的"驻留字符串"，相同内容只存储一份，比较是 O(1) 指针比较。</p><h3 id=122-源码示例>12.2 源码示例</h3><blockquote><p><strong>证据等级 A</strong>：基于 <code>core/string/string_name.h</code> 验证。</p></blockquote><div class=highlight><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=c1>// core/string/string_name.h（简化）
+</span></span></span><span class=line><span class=cl><span class=k>class</span> <span class=nc>StringName</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=k>struct</span> <span class=nc>StringData</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=k>const</span> <span class=kt>char</span> <span class=o>*</span><span class=n>data</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>        <span class=kt>int</span> <span class=n>length</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>        <span class=kt>uint32_t</span> <span class=n>hash</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>        <span class=c1>// ...
+</span></span></span><span class=line><span class=cl>    <span class=p>};</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=n>StringData</span> <span class=o>*</span><span class=n>_data</span> <span class=o>=</span> <span class=k>nullptr</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=k>public</span><span class=o>:</span>
+</span></span><span class=line><span class=cl>    <span class=n>StringName</span><span class=p>(</span><span class=k>const</span> <span class=kt>char</span> <span class=o>*</span><span class=n>p_name</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=n>StringName</span><span class=p>(</span><span class=k>const</span> <span class=n>String</span> <span class=o>&amp;</span><span class=n>p_name</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=kt>bool</span> <span class=k>operator</span><span class=o>==</span><span class=p>(</span><span class=k>const</span> <span class=n>StringName</span> <span class=o>&amp;</span><span class=n>p_other</span><span class=p>)</span> <span class=k>const</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=k>return</span> <span class=n>_data</span> <span class=o>==</span> <span class=n>p_other</span><span class=p>.</span><span class=n>_data</span><span class=p>;</span> <span class=c1>// 指针比较，O(1)
+</span></span></span><span class=line><span class=cl>    <span class=p>}</span>
+</span></span><span class=line><span class=cl>    <span class=c1>// ...
+</span></span></span><span class=line><span class=cl><span class=p>};</span>
+</span></span></code></pre></div><h3 id=123-设计动机>12.3 设计动机</h3><ul><li><strong>性能</strong>：方法名、信号名、属性名频繁比较，O(1) 至关重要</li><li><strong>内存</strong>：相同字符串只存一份</li><li><strong>哈希</strong>：预计算哈希，加速查找</li></ul><h3 id=124-使用场景>12.4 使用场景</h3><ul><li>ClassDB 的方法名、类名</li><li>信号名</li><li>属性名</li><li>节点名（可选）</li></ul><h3 id=125-潜在陷阱>12.5 潜在陷阱</h3><ul><li><strong>创建开销</strong>：首次创建需查表，有锁开销</li><li><strong>永不释放</strong>：StringName 一旦创建，进程内不释放（除非手动清理）</li><li><strong>不适合动态字符串</strong>：频繁变化的字符串用 String</li></ul><hr><h2 id=十三callable-与多态回调>十三、Callable 与多态回调</h2><h3 id=131-技巧描述>13.1 技巧描述</h3><p><code>Callable</code> 是 Godot 的统一回调抽象，可以表示对象方法、Lambda、绑定参数的回调。它通过 <code>CallableCustom</code> 实现多态。</p><h3 id=132-源码示例>13.2 源码示例</h3><blockquote><p><strong>证据等级 A</strong>：基于 <code>core/variant/callable.h</code> 验证。</p></blockquote><div class=highlight><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=c1>// core/variant/callable.h（简化）
+</span></span></span><span class=line><span class=cl><span class=k>class</span> <span class=nc>Callable</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=c1>// 内联存储：对象方法（Object* + method_name）
+</span></span></span><span class=line><span class=cl>    <span class=n>Object</span> <span class=o>*</span><span class=n>object</span> <span class=o>=</span> <span class=k>nullptr</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=n>StringName</span> <span class=n>method</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=c1>// 或自定义回调
+</span></span></span><span class=line><span class=cl>    <span class=n>CallableCustom</span> <span class=o>*</span><span class=n>custom</span> <span class=o>=</span> <span class=k>nullptr</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=k>public</span><span class=o>:</span>
+</span></span><span class=line><span class=cl>    <span class=c1>// 对象方法
+</span></span></span><span class=line><span class=cl>    <span class=n>Callable</span><span class=p>(</span><span class=n>Object</span> <span class=o>*</span><span class=n>p_object</span><span class=p>,</span> <span class=k>const</span> <span class=n>StringName</span> <span class=o>&amp;</span><span class=n>p_method</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=c1>// 自定义回调（Lambda 等）
+</span></span></span><span class=line><span class=cl>    <span class=n>Callable</span><span class=p>(</span><span class=n>CallableCustom</span> <span class=o>*</span><span class=n>p_custom</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=kt>void</span> <span class=nf>callp</span><span class=p>(</span><span class=k>const</span> <span class=n>Variant</span> <span class=o>**</span><span class=n>p_args</span><span class=p>,</span> <span class=kt>int</span> <span class=n>p_argcount</span><span class=p>,</span> <span class=n>Callable</span><span class=o>::</span><span class=n>CallError</span> <span class=o>&amp;</span><span class=n>r_error</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=k>if</span> <span class=p>(</span><span class=n>custom</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>            <span class=n>custom</span><span class=o>-&gt;</span><span class=n>call</span><span class=p>(</span><span class=n>p_args</span><span class=p>,</span> <span class=n>p_argcount</span><span class=p>,</span> <span class=n>r_error</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>        <span class=p>}</span> <span class=k>else</span> <span class=k>if</span> <span class=p>(</span><span class=n>object</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>            <span class=n>object</span><span class=o>-&gt;</span><span class=n>callp</span><span class=p>(</span><span class=n>method</span><span class=p>,</span> <span class=n>p_args</span><span class=p>,</span> <span class=n>p_argcount</span><span class=p>,</span> <span class=n>r_error</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>        <span class=p>}</span>
+</span></span><span class=line><span class=cl>    <span class=p>}</span>
+</span></span><span class=line><span class=cl><span class=p>};</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=c1>// CallableCustom 抽象
+</span></span></span><span class=line><span class=cl><span class=k>class</span> <span class=nc>CallableCustom</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl><span class=k>public</span><span class=o>:</span>
+</span></span><span class=line><span class=cl>    <span class=k>virtual</span> <span class=kt>void</span> <span class=n>call</span><span class=p>(</span><span class=k>const</span> <span class=n>Variant</span> <span class=o>**</span><span class=n>p_args</span><span class=p>,</span> <span class=kt>int</span> <span class=n>p_argcount</span><span class=p>,</span> <span class=n>Callable</span><span class=o>::</span><span class=n>CallError</span> <span class=o>&amp;</span><span class=n>r_error</span><span class=p>)</span> <span class=o>=</span> <span class=mi>0</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=k>virtual</span> <span class=kt>uint32_t</span> <span class=nf>hash</span><span class=p>()</span> <span class=k>const</span> <span class=o>=</span> <span class=mi>0</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=k>virtual</span> <span class=kt>bool</span> <span class=nf>compare</span><span class=p>(</span><span class=k>const</span> <span class=n>CallableCustom</span> <span class=o>*</span><span class=n>p_other</span><span class=p>)</span> <span class=k>const</span> <span class=o>=</span> <span class=mi>0</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=p>};</span>
+</span></span></code></pre></div><h3 id=133-使用示例>13.3 使用示例</h3><div class=highlight><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=c1>// 对象方法
+</span></span></span><span class=line><span class=cl><span class=n>Callable</span> <span class=n>c1</span> <span class=o>=</span> <span class=n>Callable</span><span class=p>(</span><span class=n>button</span><span class=p>,</span> <span class=s>&#34;pressed_handler&#34;</span><span class=p>);</span>
+</span></span><span class=line><span class=cl><span class=n>button</span><span class=o>-&gt;</span><span class=n>connect</span><span class=p>(</span><span class=s>&#34;pressed&#34;</span><span class=p>,</span> <span class=n>c1</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=c1>// Lambda
+</span></span></span><span class=line><span class=cl><span class=n>Callable</span> <span class=n>c2</span> <span class=o>=</span> <span class=n>Callable</span><span class=p>([](</span><span class=n>Variant</span> <span class=o>*</span><span class=n>args</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=n>print</span><span class=p>(</span><span class=s>&#34;Lambda called&#34;</span><span class=p>);</span>
+</span></span><span class=line><span class=cl><span class=p>});</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=c1>// 绑定参数
+</span></span></span><span class=line><span class=cl><span class=n>Callable</span> <span class=n>c3</span> <span class=o>=</span> <span class=n>Callable</span><span class=p>(</span><span class=n>object</span><span class=p>,</span> <span class=s>&#34;method&#34;</span><span class=p>).</span><span class=n>bind</span><span class=p>(</span><span class=mi>42</span><span class=p>,</span> <span class=s>&#34;hello&#34;</span><span class=p>);</span>
+</span></span><span class=line><span class=cl><span class=c1>// 调用时自动附加 42 和 &#34;hello&#34;
+</span></span></span></code></pre></div><h3 id=134-设计动机>13.4 设计动机</h3><ul><li><strong>统一接口</strong>：对象方法、Lambda、绑定参数统一为 Callable</li><li><strong>灵活性</strong>：支持任意回调形式</li><li><strong>信号系统</strong>：Signal 的连接基于 Callable</li></ul><h3 id=135-潜在陷阱>13.5 潜在陷阱</h3><ul><li><strong>对象生命周期</strong>：Callable 持有 Object 裸指针，对象销毁后调用崩溃</li><li><strong>Lambda 捕获</strong>：Lambda 捕获的变量需注意生命周期</li><li><strong>性能</strong>：CallableCustom 有虚函数开销</li></ul><hr><h2 id=十四总结godot-的-c-风格>十四、总结：Godot 的 C++ 风格</h2><h3 id=141-设计哲学>14.1 设计哲学</h3><p>Godot 的 C++ 风格体现了以下哲学：</p><ol><li><strong>实用主义</strong>：不追求最新标准，C++17 足够</li><li><strong>性能优先</strong>：模板、内联、栈分配优化</li><li><strong>安全第二</strong>：错误处理宏、防御性编程</li><li><strong>可读性</strong>：宏隐藏样板，代码聚焦逻辑</li><li><strong>跨平台</strong>：抽象平台差异，统一接口</li></ol><h3 id=142-技巧分类>14.2 技巧分类</h3><table><thead><tr><th>类别</th><th>技巧</th><th>目的</th></tr></thead><tbody><tr><td>编译优化</td><td>前向声明、PIMPL、<em>FORCE_INLINE</em></td><td>加速编译、提升性能</td></tr><tr><td>类型系统</td><td>GDCLASS、GDVIRTUAL、MethodBind</td><td>反射、脚本绑定</td></tr><tr><td>内存管理</td><td>memnew/memdelete、RefCounted、Ref</td><td>自动释放、泄漏检测</td></tr><tr><td>动态类型</td><td>Variant、StringName、Callable</td><td>脚本语言互操作</td></tr><tr><td>错误处理</td><td>ERR_FAIL_*、CRASH_NOW</td><td>统一错误处理</td></tr><tr><td>模板元编程</td><td>MethodBind、CRTP</td><td>零开销抽象</td></tr></tbody></table><h3 id=143-学习建议>14.3 学习建议</h3><ol><li><strong>从 GDCLASS 开始</strong>：理解宏展开，是理解 Godot 的钥匙</li><li><strong>阅读 MethodBind</strong>：掌握模板元编程在反射中的应用</li><li><strong>追踪 Variant</strong>：理解动态类型的实现</li><li><strong>分析 RefCounted</strong>：学习引用计数的实现</li><li><strong>实践错误宏</strong>：在自己的代码中使用 ERR_FAIL_*</li></ol><h3 id=144-参考与延伸>14.4 参考与延伸</h3><ul><li><a href=./02-%e6%a0%b8%e5%bf%83%e6%a6%82%e5%bf%b5.md>02-核心概念.md</a>：Object/Variant/ClassDB 详解</li><li><a href=./05-%e8%b0%83%e7%94%a8%e9%93%be%e6%a1%88%e4%be%8b.md>05-调用链案例.md</a>：MethodBind 在调用链中的作用</li><li><a href=./07-%e6%a8%a1%e5%9d%97%e7%b3%bb%e7%bb%9f%e4%b8%8e%e6%89%a9%e5%b1%95.md>07-模块系统与扩展.md</a>：GDCLASS 在模块中的应用</li></ul><h3 id=145-关键源码索引>14.5 关键源码索引</h3><table><thead><tr><th>技巧</th><th>文件</th></tr></thead><tbody><tr><td>GDCLASS 宏</td><td><code>core/object/object.h:245-294</code></td></tr><tr><td>GDVIRTUAL 宏</td><td><code>core/object/object.h:365-440</code></td></tr><tr><td>MethodBind 模板</td><td><code>core/object/method_bind.h</code></td></tr><tr><td>RefCounted</td><td><code>core/object/ref_counted.h</code></td></tr><tr><td>Variant union</td><td><code>core/variant/variant.h:255-340</code></td></tr><tr><td>memnew/memdelete</td><td><code>core/os/memory.h</code></td></tr><tr><td><em>FORCE_INLINE</em></td><td><code>core/os/memory.h</code></td></tr><tr><td>ERR_FAIL_*</td><td><code>core/error/error_macros.h</code></td></tr><tr><td>StringName</td><td><code>core/string/string_name.h</code></td></tr><tr><td>Callable</td><td><code>core/variant/callable.h</code></td></tr></tbody></table></div><footer class=article-footer><span>归档于</span>
+<a href=/categories/godot/>Godot</a></footer></article><aside class="toc glass-panel" aria-label=文章目录><strong>本文目录</strong><nav id=TableOfContents><ul><li><a href=#概述>概述</a></li><li><a href=#一前向声明与编译防火墙>一、前向声明与编译防火墙</a><ul><li><a href=#11-技巧描述>1.1 技巧描述</a></li><li><a href=#12-源码示例>1.2 源码示例</a></li><li><a href=#13-设计动机>1.3 设计动机</a></li><li><a href=#14-使用场景>1.4 使用场景</a></li><li><a href=#15-潜在陷阱>1.5 潜在陷阱</a></li></ul></li><li><a href=#二虚函数与-gdvirtual-宏>二、虚函数与 GDVIRTUAL 宏</a><ul><li><a href=#21-技巧描述>2.1 技巧描述</a></li><li><a href=#22-源码示例>2.2 源码示例</a></li><li><a href=#23-设计动机>2.3 设计动机</a></li><li><a href=#24-调用机制>2.4 调用机制</a></li><li><a href=#25-潜在陷阱>2.5 潜在陷阱</a></li></ul></li><li><a href=#三模板元编程与-methodbind>三、模板元编程与 MethodBind</a><ul><li><a href=#31-技巧描述>3.1 技巧描述</a></li><li><a href=#32-源码示例>3.2 源码示例</a></li><li><a href=#33-使用示例>3.3 使用示例</a></li><li><a href=#34-设计动机>3.4 设计动机</a></li><li><a href=#35-潜在陷阱>3.5 潜在陷阱</a></li></ul></li><li><a href=#四引用计数与-refcounted>四、引用计数与 RefCounted</a><ul><li><a href=#41-技巧描述>4.1 技巧描述</a></li><li><a href=#42-源码示例>4.2 源码示例</a></li><li><a href=#43-使用示例>4.3 使用示例</a></li><li><a href=#44-设计动机>4.4 设计动机</a></li><li><a href=#45-潜在陷阱>4.5 潜在陷阱</a></li></ul></li><li><a href=#五宏编程与-gdclass>五、宏编程与 GDCLASS</a><ul><li><a href=#51-技巧描述>5.1 技巧描述</a></li><li><a href=#52-源码示例>5.2 源码示例</a></li><li><a href=#53-使用示例>5.3 使用示例</a></li><li><a href=#54-gdclass-生成的功能>5.4 GDCLASS 生成的功能</a></li><li><a href=#55-设计动机>5.5 设计动机</a></li><li><a href=#56-潜在陷阱>5.6 潜在陷阱</a></li></ul></li><li><a href=#六variant-动态类型>六、Variant 动态类型</a><ul><li><a href=#61-技巧描述>6.1 技巧描述</a></li><li><a href=#62-源码示例>6.2 源码示例</a></li><li><a href=#63-类型转换>6.3 类型转换</a></li><li><a href=#64-设计动机>6.4 设计动机</a></li><li><a href=#65-潜在陷阱>6.5 潜在陷阱</a></li></ul></li><li><a href=#七内存管理宏-memnewmemdelete>七、内存管理宏 memnew/memdelete</a><ul><li><a href=#71-技巧描述>7.1 技巧描述</a></li><li><a href=#72-源码示例>7.2 源码示例</a></li><li><a href=#73-使用示例>7.3 使用示例</a></li><li><a href=#74-设计动机>7.4 设计动机</a></li><li><a href=#75-潜在陷阱>7.5 潜在陷阱</a></li></ul></li><li><a href=#八force_-强制内联>八、<em>FORCE_INLINE</em> 强制内联</a><ul><li><a href=#81-技巧描述>8.1 技巧描述</a></li><li><a href=#82-源码示例>8.2 源码示例</a></li><li><a href=#83-使用场景>8.3 使用场景</a></li><li><a href=#84-设计动机>8.4 设计动机</a></li><li><a href=#85-潜在陷阱>8.5 潜在陷阱</a></li></ul></li><li><a href=#九crtp-与零开销抽象>九、CRTP 与零开销抽象</a><ul><li><a href=#91-技巧描述>9.1 技巧描述</a></li><li><a href=#92-源码示例>9.2 源码示例</a></li><li><a href=#93-设计动机>9.3 设计动机</a></li><li><a href=#94-潜在陷阱>9.4 潜在陷阱</a></li></ul></li><li><a href=#十pimpl-指针与封装>十、PIMPL 指针与封装</a><ul><li><a href=#101-技巧描述>10.1 技巧描述</a></li><li><a href=#102-源码示例>10.2 源码示例</a></li><li><a href=#103-设计动机>10.3 设计动机</a></li><li><a href=#104-潜在陷阱>10.4 潜在陷阱</a></li></ul></li><li><a href=#十一错误处理宏>十一、错误处理宏</a><ul><li><a href=#111-技巧描述>11.1 技巧描述</a></li><li><a href=#112-源码示例>11.2 源码示例</a></li><li><a href=#113-使用示例>11.3 使用示例</a></li><li><a href=#114-设计动机>11.4 设计动机</a></li><li><a href=#115-潜在陷阱>11.5 潜在陷阱</a></li></ul></li><li><a href=#十二stringname-与字符串池>十二、StringName 与字符串池</a><ul><li><a href=#121-技巧描述>12.1 技巧描述</a></li><li><a href=#122-源码示例>12.2 源码示例</a></li><li><a href=#123-设计动机>12.3 设计动机</a></li><li><a href=#124-使用场景>12.4 使用场景</a></li><li><a href=#125-潜在陷阱>12.5 潜在陷阱</a></li></ul></li><li><a href=#十三callable-与多态回调>十三、Callable 与多态回调</a><ul><li><a href=#131-技巧描述>13.1 技巧描述</a></li><li><a href=#132-源码示例>13.2 源码示例</a></li><li><a href=#133-使用示例>13.3 使用示例</a></li><li><a href=#134-设计动机>13.4 设计动机</a></li><li><a href=#135-潜在陷阱>13.5 潜在陷阱</a></li></ul></li><li><a href=#十四总结godot-的-c-风格>十四、总结：Godot 的 C++ 风格</a><ul><li><a href=#141-设计哲学>14.1 设计哲学</a></li><li><a href=#142-技巧分类>14.2 技巧分类</a></li><li><a href=#143-学习建议>14.3 学习建议</a></li><li><a href=#144-参考与延伸>14.4 参考与延伸</a></li><li><a href=#145-关键源码索引>14.5 关键源码索引</a></li></ul></li></ul></nav></aside></div></main><footer class=site-footer><div class=footer-inner><p>&copy; 2023–2026 你的名字. 保留所有权利。</p><div class=footer-meta></div></div></footer><script defer src=https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js crossorigin=anonymous></script><script defer src=https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js crossorigin=anonymous></script><script>document.addEventListener("DOMContentLoaded",function(){typeof katex!="undefined"&&document.querySelectorAll(".katex-block[data-math]").forEach(function(e){try{katex.render(e.textContent,e,{displayMode:!0,throwOnError:!1})}catch{}}),typeof renderMathInElement=="function"&&renderMathInElement(document.body,{delimiters:[{left:"$$",right:"$$",display:!0},{left:"\\[",right:"\\]",display:!0},{left:"$",right:"$",display:!1},{left:"\\(",right:"\\)",display:!1}],ignoredTags:["script","noscript","style","textarea","pre","code"],throwOnError:!1})})</script><script src=/js/main.min.d67c76b16258bc785c9a7bda52b7326bf67bb61290c8e66e975ed27a7330b4c9.js integrity="sha256-1nx2sWJYvHhcmnvaUrcya/Z7thKQyOZul17SenMwtMk=" defer></script></body></html>

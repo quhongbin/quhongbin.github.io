@@ -1,0 +1,649 @@
+<!doctype html><html lang=zh-CN dir=ltr><head><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><meta name=color-scheme content="light dark"><meta name=theme-color content="#08111f" media="(prefers-color-scheme: dark)"><meta name=theme-color content="#fff5e1" media="(prefers-color-scheme: light)"><script>document.documentElement.classList.add("js"),function(){try{var e,t=localStorage.getItem("site-theme");t==="light"||t==="dark"?document.documentElement.setAttribute("data-theme",t):document.documentElement.setAttribute("data-theme",window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"),e=localStorage.getItem("site-palette"),(e==="macos"||e==="github"||e==="gruvbox")&&document.documentElement.setAttribute("data-palette",e)}catch{}}()</script><title>Godot Learning-7 · 我的博客</title><meta name=description content="07 - Godot 模块系统与扩展机制 源码版本：Godot 4.8.dev（master 分支，2026-08-26） 证据等级：A（除非另行标注）
+1. 模块概述 Godot 的模块系统是其可扩展性的核心。引擎将可选功能（GDScript、C#、导航、WebRTC、GLTF 导入等）组织为独立的 modules/ 子目录，每个模块通过统一的 register_types.cpp 接口接入引擎。这种设计使得引擎核心保持精简，同时允许按需编译——开发者可以禁用不需要的模块以减小二进制体积。
+"><meta name=author content="你的名字"><link rel=canonical href=https://quhongbin.github.io/godot/07-%E6%A8%A1%E5%9D%97%E7%B3%BB%E7%BB%9F%E4%B8%8E%E6%89%A9%E5%B1%95/><link rel=alternate hreflang=zh-CN href=https://quhongbin.github.io/godot/07-%E6%A8%A1%E5%9D%97%E7%B3%BB%E7%BB%9F%E4%B8%8E%E6%89%A9%E5%B1%95/><meta property="og:type" content="article"><meta property="og:title" content="Godot Learning-7 · 我的博客"><meta property="og:description" content="07 - Godot 模块系统与扩展机制 源码版本：Godot 4.8.dev（master 分支，2026-08-26） 证据等级：A（除非另行标注）
+1. 模块概述 Godot 的模块系统是其可扩展性的核心。引擎将可选功能（GDScript、C#、导航、WebRTC、GLTF 导入等）组织为独立的 modules/ 子目录，每个模块通过统一的 register_types.cpp 接口接入引擎。这种设计使得引擎核心保持精简，同时允许按需编译——开发者可以禁用不需要的模块以减小二进制体积。
+"><meta property="og:url" content="https://quhongbin.github.io/godot/07-%E6%A8%A1%E5%9D%97%E7%B3%BB%E7%BB%9F%E4%B8%8E%E6%89%A9%E5%B1%95/"><meta property="og:site_name" content="我的博客"><link rel=stylesheet href=/css/main.min.40ad2a9c00a93175c79e471a6792f23457c527e9c46cc8ee6e16d300f7bf6674.css integrity="sha256-QK0qnACpMXXHnkcaZ5LyNFfFJ+nEbMjubhbTAPe/ZnQ="><link rel=stylesheet href=/css/site-palettes.min.0f2ed388ed0b74ab72dcd2b144a6a19acbd23a4edca157c36eecdffad3dfe7bf.css integrity="sha256-Dy7TiO0LdKty3NKxRKahmsvSOk7coVfDbuzf+tPf578="><link rel=stylesheet href=/css/code-themes.min.78bd37b0419e6af001a97d6754f5264cacc1413c97b2e5d67033547083130a12.css integrity="sha256-eL03sEGeavABqX1nVPUmTKzBQTyXsuXWcDNUcIMTChI="><link rel=stylesheet href=https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css crossorigin=anonymous><style>:root{--content-width:1400px;--article-width:1100px;--toc-width:250px;--article-pad:clamp(25px, 6vw, 72px)}</style><link rel=icon href=/images/avatar.webp></head><body class=page-kind-page><a class=skip-link href=#main-content>跳到正文</a><div class=site-background aria-hidden=true></div><header class=site-header data-site-header><div class=header-inner><a class=site-brand href=/ aria-label=我的博客><img class=brand-avatar src=/images/avatar.webp alt width=44 height=44>
+<span class=brand-copy><strong>我的博客</strong>
+<small>在代码与生活之间</small>
+</span></a><button class=menu-toggle type=button aria-expanded=false aria-controls=site-navigation data-menu-toggle>
+<span class=menu-toggle-lines aria-hidden=true></span>
+<span class=sr-only>打开或关闭菜单</span></button><nav id=site-navigation class=site-navigation aria-label=主导航 data-navigation><ul class=nav-menu><li><a href=/>首页</a></li><li class="nav-item has-categories" data-categories-item><a href=/posts/ data-categories-trigger aria-haspopup=true>文章</a><ul class=categories-dropdown><li class=categories-all><a href=/posts/>全部文章</a></li><li><a href=/categories/godot/><span class=cat-name>Godot</span>
+<span class=term-count>8</span></a></li></ul></li><li><a href=/notes/>速记</a></li><li><a href=/tags/>标签</a></li><li><a href=/logs/>日志</a></li><li><a href=/about/>关于</a></li></ul><div class=header-social aria-label=社交链接><a href=https://github.com/your-name title=GitHub aria-label=GitHub target=_blank rel="noopener noreferrer"><svg class="icon icon-github" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 .7A11.5 11.5.0 008.36 23.11c.58.11.79-.25.79-.56v-2.23c-3.22.7-3.9-1.37-3.9-1.37-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.71.08-.71 1.17.08 1.78 1.2 1.78 1.2 1.04 1.78 2.72 1.27 3.38.97.1-.75.4-1.27.74-1.56-2.57-.29-5.27-1.28-5.27-5.68.0-1.25.45-2.28 1.19-3.08-.12-.29-.52-1.46.11-3.04.0.0.97-.31 3.16 1.18a10.98 10.98.0 015.76.0c2.19-1.49 3.15-1.18 3.15-1.18.63 1.58.23 2.75.11 3.04.74.8 1.19 1.83 1.19 3.08.0 4.41-2.71 5.38-5.29 5.67.42.36.79 1.07.79 2.16v3.2c0 .31.21.68.8.56A11.5 11.5.0 0012 .7z"/></svg>
+</a><a href=mailto:hello@example.com title=Email aria-label=Email><svg class="icon icon-email" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 4h18a2 2 0 012 2v12a2 2 0 01-2 2H3a2 2 0 01-2-2V6a2 2 0 012-2zm0 2 9 6 9-6H3zm18 12V8.4l-9 6-9-6V18h18z"/></svg></a></div><div class=theme-picker><button class=theme-toggle type=button data-theme-toggle aria-label="切换亮色 / 暗色主题" title="切换亮色 / 暗色主题">
+<svg class="icon icon-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><g stroke-linecap="round"><line x1="12" y1="2.5" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="21.5"/><line x1="2.5" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="21.5" y2="12"/><line x1="5.2" y1="5.2" x2="6.95" y2="6.95"/><line x1="17.05" y1="17.05" x2="18.8" y2="18.8"/><line x1="5.2" y1="18.8" x2="6.95" y2="17.05"/><line x1="17.05" y1="6.95" x2="18.8" y2="5.2"/></g></svg>
+<svg class="icon icon-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 019.5 4a.5.5.0 00-.78-.55 9.5 9.5.0 1011.83 11.83.5.5.0 00-.55-.78z"/></svg></button><div class=palette-menu role=group aria-label=主题配色><strong>主题配色</strong><div class=palette-group-label>亮色</div><button class=palette-option type=button data-palette-value=default data-palette-mode=light>站点默认 · 亮色</button>
+<button class=palette-option type=button data-palette-value=macos data-palette-mode=light>macOS · 亮色</button>
+<button class=palette-option type=button data-palette-value=github data-palette-mode=light>GitHub · 亮色</button>
+<button class=palette-option type=button data-palette-value=gruvbox data-palette-mode=light>Gruvbox · 亮色</button><div class=palette-group-label>暗色</div><button class=palette-option type=button data-palette-value=default data-palette-mode=dark>站点默认 · 暗色</button>
+<button class=palette-option type=button data-palette-value=macos data-palette-mode=dark>macOS · 暗色</button>
+<button class=palette-option type=button data-palette-value=github data-palette-mode=dark>GitHub · 暗色</button>
+<button class=palette-option type=button data-palette-value=gruvbox data-palette-mode=dark>Gruvbox · 暗色</button></div></div><details class=language-switcher><summary aria-label=选择语言><span aria-hidden=true>文/A</span>
+<span>简体中文</span></summary><ul><li><a href=/godot/07-%E6%A8%A1%E5%9D%97%E7%B3%BB%E7%BB%9F%E4%B8%8E%E6%89%A9%E5%B1%95/ lang=zh-CN aria-current=true>简体中文</a></li></ul></details></nav></div></header><main id=main-content class=site-main><div class=article-layout><article class="article glass-panel reveal"><div class=reading-progress aria-hidden=true><span data-reading-progress></span></div><header class=article-header><a class=back-link href=/godot/>← 返回列表</a><h1>Godot Learning-7</h1><div class=article-meta><time datetime=2026-08-26>August 26, 2026</time>
+<span>阅读约 13 分钟</span>
+<span>6275 字</span></div></header><div class="prose article-content" data-article-content><h1 id=07---godot-模块系统与扩展机制>07 - Godot 模块系统与扩展机制</h1><blockquote><p><strong>源码版本</strong>：Godot 4.8.dev（master 分支，2026-08-26）
+<strong>证据等级</strong>：A（除非另行标注）</p></blockquote><hr><h2 id=1-模块概述>1. 模块概述</h2><p>Godot 的模块系统是其可扩展性的核心。引擎将可选功能（GDScript、C#、导航、WebRTC、GLTF 导入等）组织为独立的 <code>modules/</code> 子目录，每个模块通过统一的 <code>register_types.cpp</code> 接口接入引擎。这种设计使得引擎核心保持精简，同时允许按需编译——开发者可以禁用不需要的模块以减小二进制体积。</p><p>Godot 的扩展机制分为三个层次：<strong>内置模块</strong>（modules/ 目录，编译时集成）、<strong>GDExtension</strong>（运行时动态加载的共享库）、<strong>EditorPlugin</strong>（编辑器插件，纯脚本）。这三层覆盖了从核心引擎扩展到轻量编辑器增强的全部场景。</p><p>理解模块系统是理解 Godot 工程组织的关键。它揭示了 Godot 如何在保持核心稳定的同时，通过模块化实现功能扩展。</p><hr><h2 id=2-关键文件清单>2. 关键文件清单</h2><blockquote><p><strong>证据等级 A</strong>：以下文件均基于实际检出验证。</p></blockquote><table><thead><tr><th>文件</th><th>行数(约)</th><th>职责</th></tr></thead><tbody><tr><td><code>modules/register_module_types.h</code></td><td>~30</td><td>模块注册入口声明</td></tr><tr><td><code>modules/register_module_types.cpp</code></td><td>~50</td><td>模块注册入口实现</td></tr><tr><td><code>modules/gdscript/register_types.cpp</code></td><td>~200</td><td>GDScript 模块注册</td></tr><tr><td><code>modules/gdscript/register_types.h</code></td><td>~40</td><td>GDScript 模块注册声明</td></tr><tr><td><code>modules/mono/register_types.cpp</code></td><td>~300</td><td>C# 模块注册</td></tr><tr><td><code>modules/navigation/register_types.cpp</code></td><td>~100</td><td>导航模块注册</td></tr><tr><td><code>modules/webrtc/register_types.cpp</code></td><td>~80</td><td>WebRTC 模块注册</td></tr><tr><td><code>modules/gltf/register_types.cpp</code></td><td>~150</td><td>GLTF 模块注册</td></tr><tr><td><code>core/extension/gdextension.h</code></td><td>~200</td><td>GDExtension 接口</td></tr><tr><td><code>core/extension/gdextension.cpp</code></td><td>~500</td><td>GDExtension 实现</td></tr><tr><td><code>editor/plugins/editor_plugin.h</code></td><td>~300</td><td>EditorPlugin 基类</td></tr></tbody></table><hr><h2 id=3-核心数据结构>3. 核心数据结构</h2><h3 id=31-模块初始化的四个级别>3.1 模块初始化的四个级别</h3><blockquote><p><strong>证据等级 A</strong>：基于 <code>modules/register_module_types.h</code> 验证。</p></blockquote><div class=highlight><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=c1>// modules/register_module_types.h（简化）
+</span></span></span><span class=line><span class=cl><span class=k>enum</span> <span class=nc>ModuleInitializationLevel</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=n>MODULE_INITIALIZATION_LEVEL_CORE</span> <span class=o>=</span> <span class=mi>0</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>    <span class=n>MODULE_INITIALIZATION_LEVEL_SERVERS</span> <span class=o>=</span> <span class=mi>1</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>    <span class=n>MODULE_INITIALIZATION_LEVEL_SCENE</span> <span class=o>=</span> <span class=mi>2</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>    <span class=n>MODULE_INITIALIZATION_LEVEL_EDITOR</span> <span class=o>=</span> <span class=mi>3</span><span class=p>,</span>
+</span></span><span class=line><span class=cl><span class=p>};</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=kt>void</span> <span class=nf>initialize_modules</span><span class=p>(</span><span class=n>ModuleInitializationLevel</span> <span class=n>p_level</span><span class=p>);</span>
+</span></span><span class=line><span class=cl><span class=kt>void</span> <span class=nf>uninitialize_modules</span><span class=p>(</span><span class=n>ModuleInitializationLevel</span> <span class=n>p_level</span><span class=p>);</span>
+</span></span></code></pre></div><p>四个级别对应引擎启动的不同阶段：</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>┌─────────────────────────────────────────────────────────────────┐
+</span></span><span class=line><span class=cl>│                  模块初始化的四个级别                            │
+</span></span><span class=line><span class=cl>├─────────────────────────────────────────────────────────────────┤
+</span></span><span class=line><span class=cl>│                                                                 │
+</span></span><span class=line><span class=cl>│  LEVEL_CORE (最先)                                              │
+</span></span><span class=line><span class=cl>│  ├── 时机：register_core_types() 之后                           │
+</span></span><span class=line><span class=cl>│  ├── 可用：Object、Variant、ClassDB、RefCounted                 │
+</span></span><span class=line><span class=cl>│  ├── 典型模块：无（核心模块通常在 core/ 中）                    │
+</span></span><span class=line><span class=cl>│  └── 用途：注册最基础的类型                                     │
+</span></span><span class=line><span class=cl>│                                                                 │
+</span></span><span class=line><span class=cl>│  LEVEL_SERVERS                                                  │
+</span></span><span class=line><span class=cl>│  ├── 时机：register_server_types() 之后                         │
+</span></span><span class=line><span class=cl>│  ├── 可用：所有 Server 抽象（RenderingServer 等）               │
+</span></span><span class=line><span class=cl>│  ├── 典型模块：自定义物理后端、自定义渲染后端                   │
+</span></span><span class=line><span class=cl>│  └── 用途：注册服务器实现                                       │
+</span></span><span class=line><span class=cl>│                                                                 │
+</span></span><span class=line><span class=cl>│  LEVEL_SCENE                                                    │
+</span></span><span class=line><span class=cl>│  ├── 时机：register_scene_types() 之后                          │
+</span></span><span class=line><span class=cl>│  ├── 可用：Node、SceneTree、Resource                            │
+</span></span><span class=line><span class=cl>│  ├── 典型模块：GDScript、C#、Navigation、WebRTC、GLTF           │
+</span></span><span class=line><span class=cl>│  └── 用途：注册场景节点、资源、脚本语言                         │
+</span></span><span class=line><span class=cl>│                                                                 │
+</span></span><span class=line><span class=cl>│  LEVEL_EDITOR (最后，仅 TOOLS_ENABLED)                          │
+</span></span><span class=line><span class=cl>│  ├── 时机：register_editor_types() 之后                         │
+</span></span><span class=line><span class=cl>│  ├── 可用：EditorPlugin、EditorInspectorPlugin 等               │
+</span></span><span class=line><span class=cl>│  ├── 典型模块：编辑器增强、导入器插件                           │
+</span></span><span class=line><span class=cl>│  └── 用途：注册编辑器功能                                       │
+</span></span><span class=line><span class=cl>│                                                                 │
+</span></span><span class=line><span class=cl>└─────────────────────────────────────────────────────────────────┘
+</span></span></code></pre></div><h3 id=32-模块注册的标准结构>3.2 模块注册的标准结构</h3><p>每个模块必须包含 <code>register_types.h</code> 和 <code>register_types.cpp</code>，实现两个函数：</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=c1>// modules/&lt;module_name&gt;/register_types.h
+</span></span></span><span class=line><span class=cl><span class=cp>#pragma once
+</span></span></span><span class=line><span class=cl><span class=cp>#include</span> <span class=cpf>&#34;modules/register_module_types.h&#34;</span><span class=cp>
+</span></span></span><span class=line><span class=cl><span class=kt>void</span> <span class=n>initialize_</span><span class=o>&lt;</span><span class=n>module_name</span><span class=o>&gt;</span><span class=n>_module</span><span class=p>(</span><span class=n>ModuleInitializationLevel</span> <span class=n>p_level</span><span class=p>);</span>
+</span></span><span class=line><span class=cl><span class=kt>void</span> <span class=n>uninitialize_</span><span class=o>&lt;</span><span class=n>module_name</span><span class=o>&gt;</span><span class=n>_module</span><span class=p>(</span><span class=n>ModuleInitializationLevel</span> <span class=n>p_level</span><span class=p>);</span>
+</span></span></code></pre></div><div class=highlight><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=c1>// modules/&lt;module_name&gt;/register_types.cpp
+</span></span></span><span class=line><span class=cl><span class=cp>#include</span> <span class=cpf>&#34;register_types.h&#34;</span><span class=cp>
+</span></span></span><span class=line><span class=cl><span class=cp>#include</span> <span class=cpf>&#34;core/object/class_db.h&#34;</span><span class=cp>
+</span></span></span><span class=line><span class=cl><span class=c1>// ... 其他 include
+</span></span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=kt>void</span> <span class=n>initialize_</span><span class=o>&lt;</span><span class=n>module_name</span><span class=o>&gt;</span><span class=n>_module</span><span class=p>(</span><span class=n>ModuleInitializationLevel</span> <span class=n>p_level</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=k>switch</span> <span class=p>(</span><span class=n>p_level</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=k>case</span> <span class=nl>MODULE_INITIALIZATION_LEVEL_CORE</span><span class=p>:</span>
+</span></span><span class=line><span class=cl>            <span class=c1>// 核心级初始化
+</span></span></span><span class=line><span class=cl>            <span class=k>break</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>        <span class=k>case</span> <span class=nl>MODULE_INITIALIZATION_LEVEL_SERVERS</span><span class=p>:</span>
+</span></span><span class=line><span class=cl>            <span class=c1>// 服务器级初始化
+</span></span></span><span class=line><span class=cl>            <span class=k>break</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>        <span class=k>case</span> <span class=nl>MODULE_INITIALIZATION_LEVEL_SCENE</span><span class=p>:</span>
+</span></span><span class=line><span class=cl>            <span class=c1>// 场景级初始化
+</span></span></span><span class=line><span class=cl>            <span class=n>ClassDB</span><span class=o>::</span><span class=n>register_class</span><span class=o>&lt;</span><span class=n>MyClass</span><span class=o>&gt;</span><span class=p>();</span>
+</span></span><span class=line><span class=cl>            <span class=c1>// 注册脚本语言（若是脚本模块）
+</span></span></span><span class=line><span class=cl>            <span class=n>ScriptServer</span><span class=o>::</span><span class=n>register_language</span><span class=p>(</span><span class=o>&amp;</span><span class=n>my_language</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>            <span class=k>break</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>        <span class=k>case</span> <span class=nl>MODULE_INITIALIZATION_LEVEL_EDITOR</span><span class=p>:</span>
+</span></span><span class=line><span class=cl>            <span class=c1>// 编辑器级初始化
+</span></span></span><span class=line><span class=cl>            <span class=k>break</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=p>}</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=kt>void</span> <span class=n>uninitialize_</span><span class=o>&lt;</span><span class=n>module_name</span><span class=o>&gt;</span><span class=n>_module</span><span class=p>(</span><span class=n>ModuleInitializationLevel</span> <span class=n>p_level</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=k>switch</span> <span class=p>(</span><span class=n>p_level</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=k>case</span> <span class=nl>MODULE_INITIALIZATION_LEVEL_SCENE</span><span class=p>:</span>
+</span></span><span class=line><span class=cl>            <span class=c1>// 清理场景级资源
+</span></span></span><span class=line><span class=cl>            <span class=k>break</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>        <span class=c1>// ...
+</span></span></span><span class=line><span class=cl>    <span class=p>}</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></div><h3 id=33-模块编译配置>3.3 模块编译配置</h3><p>每个模块通过 <code>config.py</code> 或 <code>SCsub</code> 文件配置编译：</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-python data-lang=python><span class=line><span class=cl><span class=c1># modules/&lt;module_name&gt;/config.py</span>
+</span></span><span class=line><span class=cl><span class=k>def</span> <span class=nf>can_build</span><span class=p>(</span><span class=n>env</span><span class=p>,</span> <span class=n>platform</span><span class=p>):</span>
+</span></span><span class=line><span class=cl>    <span class=k>return</span> <span class=kc>True</span>  <span class=c1># 所有平台可编译</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=k>def</span> <span class=nf>configure</span><span class=p>(</span><span class=n>env</span><span class=p>):</span>
+</span></span><span class=line><span class=cl>    <span class=k>pass</span>  <span class=c1># 配置选项</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=k>def</span> <span class=nf>get_doc_classes</span><span class=p>():</span>
+</span></span><span class=line><span class=cl>    <span class=k>return</span> <span class=p>[</span><span class=s2>&#34;MyClass&#34;</span><span class=p>]</span>  <span class=c1># 文档类</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=k>def</span> <span class=nf>get_doc_path</span><span class=p>():</span>
+</span></span><span class=line><span class=cl>    <span class=k>return</span> <span class=s2>&#34;modules/&lt;module_name&gt;&#34;</span>
+</span></span></code></pre></div><div class=highlight><pre tabindex=0 class=chroma><code class=language-python data-lang=python><span class=line><span class=cl><span class=c1># modules/&lt;module_name&gt;/SCsub</span>
+</span></span><span class=line><span class=cl><span class=n>Import</span><span class=p>(</span><span class=s2>&#34;env&#34;</span><span class=p>)</span>
+</span></span><span class=line><span class=cl><span class=n>env</span><span class=o>.</span><span class=n>add_source_files</span><span class=p>(</span><span class=n>env</span><span class=o>.</span><span class=n>modules_sources</span><span class=p>,</span> <span class=s2>&#34;*.cpp&#34;</span><span class=p>)</span>
+</span></span></code></pre></div><hr><h2 id=4-核心类与职责>4. 核心类与职责</h2><h3 id=41-gdscript-模块>4.1 GDScript 模块</h3><blockquote><p><strong>证据等级 A</strong>：基于 <code>modules/gdscript/register_types.cpp</code> 验证。</p></blockquote><p>GDScript 是 Godot 的原生脚本语言，作为模块实现：</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=c1>// modules/gdscript/register_types.cpp（简化）
+</span></span></span><span class=line><span class=cl><span class=k>static</span> <span class=n>GDScriptLanguage</span> <span class=o>*</span><span class=n>script_language_gd</span> <span class=o>=</span> <span class=k>nullptr</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=k>static</span> <span class=n>GDScriptResourceLoader</span> <span class=o>*</span><span class=n>resource_loader_gd</span> <span class=o>=</span> <span class=k>nullptr</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=k>static</span> <span class=n>GDScriptResourceSaver</span> <span class=o>*</span><span class=n>resource_saver_gd</span> <span class=o>=</span> <span class=k>nullptr</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=kt>void</span> <span class=nf>initialize_gdscript_module</span><span class=p>(</span><span class=n>ModuleInitializationLevel</span> <span class=n>p_level</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=k>if</span> <span class=p>(</span><span class=n>p_level</span> <span class=o>==</span> <span class=n>MODULE_INITIALIZATION_LEVEL_SCENE</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=c1>// 创建语言实例
+</span></span></span><span class=line><span class=cl>        <span class=n>script_language_gd</span> <span class=o>=</span> <span class=n>memnew</span><span class=p>(</span><span class=n>GDScriptLanguage</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>        <span class=n>ScriptServer</span><span class=o>::</span><span class=n>register_language</span><span class=p>(</span><span class=n>script_language_gd</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>        <span class=c1>// 注册资源加载/保存器
+</span></span></span><span class=line><span class=cl>        <span class=n>resource_loader_gd</span> <span class=o>=</span> <span class=n>memnew</span><span class=p>(</span><span class=n>GDScriptResourceLoader</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>        <span class=n>ResourceLoader</span><span class=o>::</span><span class=n>add_resource_format_loader</span><span class=p>(</span><span class=n>resource_loader_gd</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>        <span class=n>resource_saver_gd</span> <span class=o>=</span> <span class=n>memnew</span><span class=p>(</span><span class=n>GDScriptResourceSaver</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>        <span class=n>ResourceSaver</span><span class=o>::</span><span class=n>add_resource_format_saver</span><span class=p>(</span><span class=n>resource_saver_gd</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>        <span class=c1>// 注册 GDScript 相关类
+</span></span></span><span class=line><span class=cl>        <span class=n>GDREGISTER_CLASS</span><span class=p>(</span><span class=n>GDScript</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>        <span class=n>GDREGISTER_CLASS</span><span class=p>(</span><span class=n>GDScriptFunctionState</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>        <span class=c1>// ...
+</span></span></span><span class=line><span class=cl>    <span class=p>}</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=kt>void</span> <span class=nf>uninitialize_gdscript_module</span><span class=p>(</span><span class=n>ModuleInitializationLevel</span> <span class=n>p_level</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=k>if</span> <span class=p>(</span><span class=n>p_level</span> <span class=o>==</span> <span class=n>MODULE_INITIALIZATION_LEVEL_SCENE</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=n>ScriptServer</span><span class=o>::</span><span class=n>unregister_language</span><span class=p>(</span><span class=n>script_language_gd</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>        <span class=n>ResourceLoader</span><span class=o>::</span><span class=n>remove_resource_format_loader</span><span class=p>(</span><span class=n>resource_loader_gd</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>        <span class=n>ResourceSaver</span><span class=o>::</span><span class=n>remove_resource_format_saver</span><span class=p>(</span><span class=n>resource_saver_gd</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>        <span class=n>memdelete</span><span class=p>(</span><span class=n>script_language_gd</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>        <span class=n>memdelete</span><span class=p>(</span><span class=n>resource_loader_gd</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>        <span class=n>memdelete</span><span class=p>(</span><span class=n>resource_saver_gd</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=p>}</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></div><h4 id=411-gdscriptlanguage-的职责>4.1.1 GDScriptLanguage 的职责</h4><blockquote><p><strong>证据等级 A</strong>：基于 <code>modules/gdscript/gdscript.h</code> 验证。</p></blockquote><div class=highlight><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=k>class</span> <span class=nc>GDScriptLanguage</span> <span class=o>:</span> <span class=k>public</span> <span class=n>ScriptLanguage</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl><span class=k>public</span><span class=o>:</span>
+</span></span><span class=line><span class=cl>    <span class=c1>// 脚本创建
+</span></span></span><span class=line><span class=cl>    <span class=k>virtual</span> <span class=n>Script</span> <span class=o>*</span><span class=n>create_script</span><span class=p>()</span> <span class=k>const</span> <span class=k>override</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=c1>// 脚本实例创建
+</span></span></span><span class=line><span class=cl>    <span class=k>virtual</span> <span class=n>ScriptInstance</span> <span class=o>*</span><span class=nf>create_instance</span><span class=p>(</span><span class=n>Object</span> <span class=o>*</span><span class=n>p_this</span><span class=p>,</span> <span class=k>const</span> <span class=n>Ref</span><span class=o>&lt;</span><span class=n>Script</span><span class=o>&gt;</span> <span class=o>&amp;</span><span class=n>p_script</span><span class=p>)</span> <span class=k>override</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=c1>// 源码解析
+</span></span></span><span class=line><span class=cl>    <span class=k>virtual</span> <span class=n>Error</span> <span class=nf>compile</span><span class=p>(</span><span class=k>const</span> <span class=n>String</span> <span class=o>&amp;</span><span class=n>p_code</span><span class=p>,</span> <span class=k>const</span> <span class=n>String</span> <span class=o>&amp;</span><span class=n>p_path</span><span class=p>)</span> <span class=k>override</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=c1>// 全局常量
+</span></span></span><span class=line><span class=cl>    <span class=k>virtual</span> <span class=kt>void</span> <span class=nf>get_global_constants</span><span class=p>(</span><span class=n>List</span><span class=o>&lt;</span><span class=n>Pair</span><span class=o>&lt;</span><span class=n>String</span><span class=p>,</span> <span class=kt>int</span><span class=o>&gt;&gt;</span> <span class=o>*</span><span class=n>p_constants</span><span class=p>)</span> <span class=k>const</span> <span class=k>override</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=c1>// 调试
+</span></span></span><span class=line><span class=cl>    <span class=k>virtual</span> <span class=kt>void</span> <span class=nf>debug_get_stack_frame_info</span><span class=p>(...)</span> <span class=k>override</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=c1>// ...
+</span></span></span><span class=line><span class=cl><span class=p>};</span>
+</span></span></code></pre></div><h3 id=42-c-模块>4.2 C# 模块</h3><blockquote><p><strong>证据等级 A</strong>：基于 <code>modules/mono/register_types.cpp</code> 验证。</p></blockquote><p>C# 模块通过 Mono 运行时集成：</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=c1>// modules/mono/register_types.cpp（简化）
+</span></span></span><span class=line><span class=cl><span class=kt>void</span> <span class=nf>initialize_mono_module</span><span class=p>(</span><span class=n>ModuleInitializationLevel</span> <span class=n>p_level</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=k>if</span> <span class=p>(</span><span class=n>p_level</span> <span class=o>==</span> <span class=n>MODULE_INITIALIZATION_LEVEL_SCENE</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=c1>// 初始化 Mono 运行时
+</span></span></span><span class=line><span class=cl>        <span class=n>GDMono</span><span class=o>::</span><span class=n>initialize</span><span class=p>();</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>        <span class=c1>// 注册 C# 脚本语言
+</span></span></span><span class=line><span class=cl>        <span class=n>script_language_csharp</span> <span class=o>=</span> <span class=n>memnew</span><span class=p>(</span><span class=n>CSharpLanguage</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>        <span class=n>ScriptServer</span><span class=o>::</span><span class=n>register_language</span><span class=p>(</span><span class=n>script_language_csharp</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>        <span class=c1>// 注册资源加载/保存器
+</span></span></span><span class=line><span class=cl>        <span class=c1>// ...
+</span></span></span><span class=line><span class=cl>    <span class=p>}</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></div><h3 id=43-navigation-模块>4.3 Navigation 模块</h3><blockquote><p><strong>证据等级 A</strong>：基于 <code>modules/navigation/register_types.cpp</code> 验证。</p></blockquote><p>导航模块提供寻路与导航网格：</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=c1>// modules/navigation/register_types.cpp（简化）
+</span></span></span><span class=line><span class=cl><span class=kt>void</span> <span class=nf>initialize_navigation_module</span><span class=p>(</span><span class=n>ModuleInitializationLevel</span> <span class=n>p_level</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=k>if</span> <span class=p>(</span><span class=n>p_level</span> <span class=o>==</span> <span class=n>MODULE_INITIALIZATION_LEVEL_SERVERS</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=c1>// 注册导航服务器
+</span></span></span><span class=line><span class=cl>        <span class=n>NavigationServer3DManager</span><span class=o>::</span><span class=n>set_default_server</span><span class=p>(</span><span class=n>NavigationServer3DManager</span><span class=o>::</span><span class=n>get_default_server_name</span><span class=p>());</span>
+</span></span><span class=line><span class=cl>    <span class=p>}</span>
+</span></span><span class=line><span class=cl>    <span class=k>if</span> <span class=p>(</span><span class=n>p_level</span> <span class=o>==</span> <span class=n>MODULE_INITIALIZATION_LEVEL_SCENE</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=c1>// 注册导航相关节点
+</span></span></span><span class=line><span class=cl>        <span class=n>GDREGISTER_CLASS</span><span class=p>(</span><span class=n>NavigationRegion3D</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>        <span class=n>GDREGISTER_CLASS</span><span class=p>(</span><span class=n>NavigationAgent3D</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>        <span class=n>GDREGISTER_CLASS</span><span class=p>(</span><span class=n>NavigationObstacle3D</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>        <span class=c1>// ...
+</span></span></span><span class=line><span class=cl>    <span class=p>}</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></div><h3 id=44-gdextension-系统>4.4 GDExtension 系统</h3><blockquote><p><strong>证据等级 A</strong>：基于 <code>core/extension/gdextension.h</code> 验证。</p></blockquote><p>GDExtension 是 Godot 4.x 引入的运行时扩展机制，允许动态加载共享库（.dll/.so/.dylib）：</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=c1>// core/extension/gdextension.h（简化）
+</span></span></span><span class=line><span class=cl><span class=k>class</span> <span class=nc>GDExtension</span> <span class=o>:</span> <span class=k>public</span> <span class=n>Resource</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=n>GDCLASS</span><span class=p>(</span><span class=n>GDExtension</span><span class=p>,</span> <span class=n>Resource</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=kt>void</span> <span class=o>*</span><span class=n>library</span> <span class=o>=</span> <span class=k>nullptr</span><span class=p>;</span> <span class=c1>// 共享库句柄
+</span></span></span><span class=line><span class=cl>    <span class=n>String</span> <span class=n>library_path</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=kt>bool</span> <span class=n>is_initialized</span> <span class=o>=</span> <span class=nb>false</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=c1>// 扩展初始化函数
+</span></span></span><span class=line><span class=cl>    <span class=n>GDExtensionInitializationFunction</span> <span class=n>initialization_function</span> <span class=o>=</span> <span class=k>nullptr</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=k>public</span><span class=o>:</span>
+</span></span><span class=line><span class=cl>    <span class=n>Error</span> <span class=n>open_library</span><span class=p>(</span><span class=k>const</span> <span class=n>String</span> <span class=o>&amp;</span><span class=n>p_path</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=kt>void</span> <span class=nf>close_library</span><span class=p>();</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=c1>// 初始化扩展
+</span></span></span><span class=line><span class=cl>    <span class=n>Error</span> <span class=nf>initialize</span><span class=p>(</span><span class=n>InitializationLevel</span> <span class=n>p_level</span> <span class=o>=</span> <span class=n>INITIALIZATION_LEVEL_SCENE</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=kt>void</span> <span class=nf>deinitialize</span><span class=p>(</span><span class=n>InitializationLevel</span> <span class=n>p_level</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=c1>// 加载扩展类
+</span></span></span><span class=line><span class=cl>    <span class=k>static</span> <span class=n>Ref</span><span class=o>&lt;</span><span class=n>GDExtension</span><span class=o>&gt;</span> <span class=n>load</span><span class=p>(</span><span class=k>const</span> <span class=n>String</span> <span class=o>&amp;</span><span class=n>p_path</span><span class=p>);</span>
+</span></span><span class=line><span class=cl><span class=p>};</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=c1>// 扩展接口（C ABI）
+</span></span></span><span class=line><span class=cl><span class=k>typedef</span> <span class=nf>GDExtensionBool</span> <span class=p>(</span><span class=o>*</span><span class=n>GDExtensionInitializationFunction</span><span class=p>)(</span>
+</span></span><span class=line><span class=cl>    <span class=k>const</span> <span class=n>GDExtensionInterface</span> <span class=o>*</span><span class=n>p_interface</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>    <span class=n>GDExtensionClassLibraryPtr</span> <span class=n>p_library</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>    <span class=n>GDExtensionInitialization</span> <span class=o>*</span><span class=n>r_initialization</span>
+</span></span><span class=line><span class=cl><span class=p>);</span>
+</span></span></code></pre></div><h4 id=441-gdextension-的初始化级别>4.4.1 GDExtension 的初始化级别</h4><div class=highlight><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=k>enum</span> <span class=nc>InitializationLevel</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=n>INITIALIZATION_LEVEL_CORE</span> <span class=o>=</span> <span class=mi>0</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>    <span class=n>INITIALIZATION_LEVEL_SERVERS</span> <span class=o>=</span> <span class=mi>1</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>    <span class=n>INITIALIZATION_LEVEL_SCENE</span> <span class=o>=</span> <span class=mi>2</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>    <span class=n>INITIALIZATION_LEVEL_EDITOR</span> <span class=o>=</span> <span class=mi>3</span><span class=p>,</span>
+</span></span><span class=line><span class=cl><span class=p>};</span>
+</span></span></code></pre></div><p>与内置模块的四个级别对应。</p><h4 id=442-gdextension-类注册>4.4.2 GDExtension 类注册</h4><div class=highlight><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=c1>// 扩展库中注册类
+</span></span></span><span class=line><span class=cl><span class=kt>void</span> <span class=nf>register_example_class</span><span class=p>()</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=n>GDExtensionClassDefinition</span> <span class=n>def</span> <span class=o>=</span> <span class=p>{};</span>
+</span></span><span class=line><span class=cl>    <span class=n>def</span><span class=p>.</span><span class=n>class_name</span> <span class=o>=</span> <span class=s>&#34;ExampleClass&#34;</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=n>def</span><span class=p>.</span><span class=n>parent_class</span> <span class=o>=</span> <span class=s>&#34;Node&#34;</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=n>def</span><span class=p>.</span><span class=n>create_instance_func</span> <span class=o>=</span> <span class=p>[](</span><span class=kt>void</span> <span class=o>*</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=n>GDExtensionObjectPtr</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=k>return</span> <span class=n>memnew</span><span class=p>(</span><span class=n>ExampleClass</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=p>};</span>
+</span></span><span class=line><span class=cl>    <span class=n>def</span><span class=p>.</span><span class=n>free_instance_func</span> <span class=o>=</span> <span class=p>[](</span><span class=kt>void</span> <span class=o>*</span><span class=p>,</span> <span class=n>GDExtensionObjectPtr</span> <span class=n>p_obj</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=n>memdelete</span><span class=p>((</span><span class=n>ExampleClass</span> <span class=o>*</span><span class=p>)</span><span class=n>p_obj</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=p>};</span>
+</span></span><span class=line><span class=cl>    <span class=c1>// ... 其他回调
+</span></span></span><span class=line><span class=cl>    <span class=n>GDExtensionClassLibrary</span><span class=o>::</span><span class=n>register_class</span><span class=p>(</span><span class=o>&amp;</span><span class=n>def</span><span class=p>);</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></div><h3 id=45-editorplugin-系统>4.5 EditorPlugin 系统</h3><blockquote><p><strong>证据等级 A</strong>：基于 <code>editor/plugins/editor_plugin.h</code> 验证。</p></blockquote><p>EditorPlugin 是编辑器扩展的脚本接口：</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=c1>// editor/plugins/editor_plugin.h（简化）
+</span></span></span><span class=line><span class=cl><span class=k>class</span> <span class=nc>EditorPlugin</span> <span class=o>:</span> <span class=k>public</span> <span class=n>Node</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=n>GDCLASS</span><span class=p>(</span><span class=n>EditorPlugin</span><span class=p>,</span> <span class=n>Node</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=k>public</span><span class=o>:</span>
+</span></span><span class=line><span class=cl>    <span class=c1>// 插件生命周期
+</span></span></span><span class=line><span class=cl>    <span class=k>virtual</span> <span class=kt>void</span> <span class=n>_apply_changes</span><span class=p>()</span> <span class=p>{}</span>
+</span></span><span class=line><span class=cl>    <span class=k>virtual</span> <span class=kt>void</span> <span class=nf>_clear</span><span class=p>()</span> <span class=p>{}</span>
+</span></span><span class=line><span class=cl>    <span class=k>virtual</span> <span class=kt>bool</span> <span class=nf>_build</span><span class=p>()</span> <span class=p>{</span> <span class=k>return</span> <span class=nb>true</span><span class=p>;</span> <span class=p>}</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=c1>// 编辑器集成
+</span></span></span><span class=line><span class=cl>    <span class=k>virtual</span> <span class=kt>void</span> <span class=nf>_edit</span><span class=p>(</span><span class=n>Object</span> <span class=o>*</span><span class=n>p_object</span><span class=p>)</span> <span class=p>{}</span>
+</span></span><span class=line><span class=cl>    <span class=k>virtual</span> <span class=kt>bool</span> <span class=nf>_handles</span><span class=p>(</span><span class=n>Object</span> <span class=o>*</span><span class=n>p_object</span><span class=p>)</span> <span class=k>const</span> <span class=p>{</span> <span class=k>return</span> <span class=nb>false</span><span class=p>;</span> <span class=p>}</span>
+</span></span><span class=line><span class=cl>    <span class=k>virtual</span> <span class=kt>void</span> <span class=nf>_make_visible</span><span class=p>(</span><span class=kt>bool</span> <span class=n>p_visible</span><span class=p>)</span> <span class=p>{}</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=c1>// 自定义 UI
+</span></span></span><span class=line><span class=cl>    <span class=k>virtual</span> <span class=kt>void</span> <span class=nf>_notification</span><span class=p>(</span><span class=kt>int</span> <span class=n>p_what</span><span class=p>)</span> <span class=p>{}</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=c1>// 输入处理
+</span></span></span><span class=line><span class=cl>    <span class=k>virtual</span> <span class=kt>void</span> <span class=nf>_forward_canvas_draw_over_viewport</span><span class=p>(</span><span class=n>Control</span> <span class=o>*</span><span class=n>p_overlay</span><span class=p>)</span> <span class=p>{}</span>
+</span></span><span class=line><span class=cl>    <span class=k>virtual</span> <span class=kt>bool</span> <span class=nf>_forward_canvas_gui_input</span><span class=p>(</span><span class=k>const</span> <span class=n>Ref</span><span class=o>&lt;</span><span class=n>InputEvent</span><span class=o>&gt;</span> <span class=o>&amp;</span><span class=n>p_event</span><span class=p>)</span> <span class=p>{</span> <span class=k>return</span> <span class=nb>false</span><span class=p>;</span> <span class=p>}</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=c1>// ...
+</span></span></span><span class=line><span class=cl><span class=p>};</span>
+</span></span></code></pre></div><h4 id=451-editorplugin-使用示例>4.5.1 EditorPlugin 使用示例</h4><div class=highlight><pre tabindex=0 class=chroma><code class=language-gdscript data-lang=gdscript><span class=line><span class=cl><span class=c1># addons/my_plugin/plugin.cfg</span>
+</span></span><span class=line><span class=cl><span class=p>[</span><span class=n>plugin</span><span class=p>]</span>
+</span></span><span class=line><span class=cl><span class=n>name</span><span class=o>=</span><span class=s2>&#34;My Plugin&#34;</span>
+</span></span><span class=line><span class=cl><span class=n>description</span><span class=o>=</span><span class=s2>&#34;A custom plugin&#34;</span>
+</span></span><span class=line><span class=cl><span class=n>author</span><span class=o>=</span><span class=s2>&#34;Author&#34;</span>
+</span></span><span class=line><span class=cl><span class=n>version</span><span class=o>=</span><span class=s2>&#34;1.0&#34;</span>
+</span></span><span class=line><span class=cl><span class=n>script</span><span class=o>=</span><span class=s2>&#34;plugin.gd&#34;</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=c1># addons/my_plugin/plugin.gd</span>
+</span></span><span class=line><span class=cl><span class=nd>@tool</span>
+</span></span><span class=line><span class=cl><span class=kd>extends</span> <span class=nc>EditorPlugin</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=kd>func</span> <span class=nf>_enter_tree</span><span class=p>():</span>
+</span></span><span class=line><span class=cl>    <span class=c1># 添加自定义节点类型</span>
+</span></span><span class=line><span class=cl>    <span class=nf>add_custom_type</span><span class=p>(</span><span class=s2>&#34;MyNode&#34;</span><span class=p>,</span> <span class=s2>&#34;Node&#34;</span><span class=p>,</span> <span class=nb>preload</span><span class=p>(</span><span class=s2>&#34;my_node.gd&#34;</span><span class=p>),</span> <span class=nb>preload</span><span class=p>(</span><span class=s2>&#34;icon.png&#34;</span><span class=p>))</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=kd>func</span> <span class=nf>_exit_tree</span><span class=p>():</span>
+</span></span><span class=line><span class=cl>    <span class=nf>remove_custom_type</span><span class=p>(</span><span class=s2>&#34;MyNode&#34;</span><span class=p>)</span>
+</span></span></code></pre></div><hr><h2 id=5-关键算法与流程>5. 关键算法与流程</h2><h3 id=51-模块编译流程>5.1 模块编译流程</h3><div class=highlight><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>1. scons 命令
+</span></span><span class=line><span class=cl>   │
+</span></span><span class=line><span class=cl>   ▼
+</span></span><span class=line><span class=cl>2. SConstruct 扫描 modules/ 目录
+</span></span><span class=line><span class=cl>   │   └── 检测每个模块的 config.py
+</span></span><span class=line><span class=cl>   │       └── can_build(env, platform) 判断是否编译
+</span></span><span class=line><span class=cl>   │
+</span></span><span class=line><span class=cl>   ▼
+</span></span><span class=line><span class=cl>3. 生成 modules_enabled.gen.h
+</span></span><span class=line><span class=cl>   │   └── #define MODULE_GDSCRIPT_ENABLED
+</span></span><span class=line><span class=cl>   │       #define MODULE_MONO_ENABLED
+</span></span><span class=line><span class=cl>   │       ...
+</span></span><span class=line><span class=cl>   │
+</span></span><span class=line><span class=cl>   ▼
+</span></span><span class=line><span class=cl>4. 编译每个模块的 SCsub
+</span></span><span class=line><span class=cl>   │   └── env.add_source_files(env.modules_sources, &#34;*.cpp&#34;)
+</span></span><span class=line><span class=cl>   │
+</span></span><span class=line><span class=cl>   ▼
+</span></span><span class=line><span class=cl>5. 生成 register_module_types.gen.cpp
+</span></span><span class=line><span class=cl>   │   └── 自动包含所有启用模块的 register_types.h
+</span></span><span class=line><span class=cl>   │       自动生成 initialize_modules() / uninitialize_modules()
+</span></span><span class=line><span class=cl>   │
+</span></span><span class=line><span class=cl>   ▼
+</span></span><span class=line><span class=cl>6. 链接到 godot 二进制
+</span></span></code></pre></div><h3 id=52-模块注册流程>5.2 模块注册流程</h3><div class=highlight><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>Main::setup()
+</span></span><span class=line><span class=cl>│
+</span></span><span class=line><span class=cl>├── register_core_types()
+</span></span><span class=line><span class=cl>│   └── initialize_modules(MODULE_INITIALIZATION_LEVEL_CORE)
+</span></span><span class=line><span class=cl>│       └── initialize_&lt;module&gt;_module(CORE)
+</span></span><span class=line><span class=cl>│           └── 各模块的核心级初始化
+</span></span><span class=line><span class=cl>│
+</span></span><span class=line><span class=cl>├── register_server_types()
+</span></span><span class=line><span class=cl>│   └── initialize_modules(MODULE_INITIALIZATION_LEVEL_SERVERS)
+</span></span><span class=line><span class=cl>│       └── initialize_&lt;module&gt;_module(SERVERS)
+</span></span><span class=line><span class=cl>│           └── 各模块的服务器级初始化
+</span></span><span class=line><span class=cl>│
+</span></span><span class=line><span class=cl>├── register_scene_types()
+</span></span><span class=line><span class=cl>│   └── initialize_modules(MODULE_INITIALIZATION_LEVEL_SCENE)
+</span></span><span class=line><span class=cl>│       └── initialize_&lt;module&gt;_module(SCENE)
+</span></span><span class=line><span class=cl>│           └── 各模块的场景级初始化
+</span></span><span class=line><span class=cl>│               ├── ClassDB::register_class&lt;...&gt;()
+</span></span><span class=line><span class=cl>│               └── ScriptServer::register_language(...)
+</span></span><span class=line><span class=cl>│
+</span></span><span class=line><span class=cl>└── register_editor_types()  // 仅 TOOLS_ENABLED
+</span></span><span class=line><span class=cl>    └── initialize_modules(MODULE_INITIALIZATION_LEVEL_EDITOR)
+</span></span><span class=line><span class=cl>        └── initialize_&lt;module&gt;_module(EDITOR)
+</span></span><span class=line><span class=cl>            └── 各模块的编辑器级初始化
+</span></span></code></pre></div><h3 id=53-gdextension-加载流程>5.3 GDExtension 加载流程</h3><div class=highlight><pre tabindex=0 class=chroma><code class=language-gdscript3 data-lang=gdscript3><span class=line><span class=cl><span class=mf>1.</span> <span class=err>项目加载</span> <span class=o>.</span><span class=n>gdextension</span> <span class=err>文件</span>
+</span></span><span class=line><span class=cl>   <span class=err>│</span>
+</span></span><span class=line><span class=cl>   <span class=err>▼</span>
+</span></span><span class=line><span class=cl><span class=mf>2.</span> <span class=n>GDExtension</span><span class=p>::</span><span class=nb>load</span><span class=p>(</span><span class=n>path</span><span class=p>)</span>
+</span></span><span class=line><span class=cl>   <span class=err>├──</span> <span class=err>解析</span> <span class=o>.</span><span class=n>gdextension</span> <span class=err>配置</span>
+</span></span><span class=line><span class=cl>   <span class=err>└──</span> <span class=err>确定平台对应的库文件</span>
+</span></span><span class=line><span class=cl>   <span class=err>│</span>
+</span></span><span class=line><span class=cl>   <span class=err>▼</span>
+</span></span><span class=line><span class=cl><span class=mf>3.</span> <span class=n>GDExtension</span><span class=p>::</span><span class=n>open_library</span><span class=p>()</span>
+</span></span><span class=line><span class=cl>   <span class=err>└──</span> <span class=ne>OS</span><span class=p>::</span><span class=n>get_singleton</span><span class=p>()</span><span class=o>-&gt;</span><span class=n>open_dynamic_library</span><span class=p>()</span>
+</span></span><span class=line><span class=cl>   <span class=err>│</span>
+</span></span><span class=line><span class=cl>   <span class=err>▼</span>
+</span></span><span class=line><span class=cl><span class=mf>4.</span> <span class=err>获取初始化函数符号</span>
+</span></span><span class=line><span class=cl>   <span class=err>└──</span> <span class=ne>OS</span><span class=p>::</span><span class=n>get_singleton</span><span class=p>()</span><span class=o>-&gt;</span><span class=n>get_dynamic_library_symbol</span><span class=p>()</span>
+</span></span><span class=line><span class=cl>   <span class=err>│</span>
+</span></span><span class=line><span class=cl>   <span class=err>▼</span>
+</span></span><span class=line><span class=cl><span class=mf>5.</span> <span class=err>调用初始化函数</span>
+</span></span><span class=line><span class=cl>   <span class=err>├──</span> <span class=err>传入</span> <span class=n>GDExtensionInterface</span><span class=err>（引擎提供的</span> <span class=n>API</span> <span class=err>表）</span>
+</span></span><span class=line><span class=cl>   <span class=err>├──</span> <span class=err>扩展库注册类、方法、属性</span>
+</span></span><span class=line><span class=cl>   <span class=err>└──</span> <span class=err>返回</span> <span class=n>GDExtensionInitialization</span> <span class=err>结构</span>
+</span></span><span class=line><span class=cl>   <span class=err>│</span>
+</span></span><span class=line><span class=cl>   <span class=err>▼</span>
+</span></span><span class=line><span class=cl><span class=mf>6.</span> <span class=err>按级别初始化</span>
+</span></span><span class=line><span class=cl>   <span class=err>├──</span> <span class=n>initialize</span><span class=p>(</span><span class=n>INITIALIZATION_LEVEL_CORE</span><span class=p>)</span>
+</span></span><span class=line><span class=cl>   <span class=err>├──</span> <span class=n>initialize</span><span class=p>(</span><span class=n>INITIALIZATION_LEVEL_SERVERS</span><span class=p>)</span>
+</span></span><span class=line><span class=cl>   <span class=err>├──</span> <span class=n>initialize</span><span class=p>(</span><span class=n>INITIALIZATION_LEVEL_SCENE</span><span class=p>)</span>
+</span></span><span class=line><span class=cl>   <span class=err>└──</span> <span class=n>initialize</span><span class=p>(</span><span class=n>INITIALIZATION_LEVEL_EDITOR</span><span class=p>)</span>
+</span></span></code></pre></div><h3 id=54-脚本语言注册流程>5.4 脚本语言注册流程</h3><div class=highlight><pre tabindex=0 class=chroma><code class=language-gdscript3 data-lang=gdscript3><span class=line><span class=cl><span class=mf>1.</span> <span class=err>模块初始化（</span><span class=n>SCENE</span> <span class=err>级别）</span>
+</span></span><span class=line><span class=cl>   <span class=err>└──</span> <span class=n>ScriptServer</span><span class=p>::</span><span class=n>register_language</span><span class=p>(</span><span class=o>&amp;</span><span class=n>my_language</span><span class=p>)</span>
+</span></span><span class=line><span class=cl>   <span class=err>│</span>
+</span></span><span class=line><span class=cl>   <span class=err>▼</span>
+</span></span><span class=line><span class=cl><span class=mf>2.</span> <span class=err>引擎记录语言</span>
+</span></span><span class=line><span class=cl>   <span class=err>└──</span> <span class=n>ScriptServer</span><span class=p>::</span><span class=n>languages</span><span class=o>.</span><span class=n>push_back</span><span class=p>(</span><span class=o>&amp;</span><span class=n>my_language</span><span class=p>)</span>
+</span></span><span class=line><span class=cl>   <span class=err>│</span>
+</span></span><span class=line><span class=cl>   <span class=err>▼</span>
+</span></span><span class=line><span class=cl><span class=mf>3.</span> <span class=err>用户加载脚本文件</span>
+</span></span><span class=line><span class=cl>   <span class=err>└──</span> <span class=ne>ResourceLoader</span><span class=p>::</span><span class=nb>load</span><span class=p>(</span><span class=s2>&#34;script.gd&#34;</span><span class=p>)</span>
+</span></span><span class=line><span class=cl>   <span class=err>│</span>
+</span></span><span class=line><span class=cl>   <span class=err>▼</span>
+</span></span><span class=line><span class=cl><span class=mf>4.</span> <span class=err>资源加载器匹配扩展名</span>
+</span></span><span class=line><span class=cl>   <span class=err>└──</span> <span class=n>GDScriptResourceLoader</span> <span class=err>识别</span> <span class=o>.</span><span class=n>gd</span>
+</span></span><span class=line><span class=cl>   <span class=err>│</span>
+</span></span><span class=line><span class=cl>   <span class=err>▼</span>
+</span></span><span class=line><span class=cl><span class=mf>5.</span> <span class=err>创建脚本资源</span>
+</span></span><span class=line><span class=cl>   <span class=err>└──</span> <span class=n>script_language_gd</span><span class=o>-&gt;</span><span class=n>create_script</span><span class=p>()</span>
+</span></span><span class=line><span class=cl>   <span class=err>│</span>
+</span></span><span class=line><span class=cl>   <span class=err>▼</span>
+</span></span><span class=line><span class=cl><span class=mf>6.</span> <span class=err>编译脚本</span>
+</span></span><span class=line><span class=cl>   <span class=err>└──</span> <span class=n>script</span><span class=o>-&gt;</span><span class=n>reload</span><span class=p>()</span>
+</span></span><span class=line><span class=cl>   <span class=err>│</span>
+</span></span><span class=line><span class=cl>   <span class=err>▼</span>
+</span></span><span class=line><span class=cl><span class=mf>7.</span> <span class=err>脚本附加到对象</span>
+</span></span><span class=line><span class=cl>   <span class=err>└──</span> <span class=n>object</span><span class=o>-&gt;</span><span class=n>set_script</span><span class=p>(</span><span class=n>script</span><span class=p>)</span>
+</span></span><span class=line><span class=cl>   <span class=err>│</span>
+</span></span><span class=line><span class=cl>   <span class=err>▼</span>
+</span></span><span class=line><span class=cl><span class=mf>8.</span> <span class=err>创建脚本实例</span>
+</span></span><span class=line><span class=cl>   <span class=err>└──</span> <span class=n>script</span><span class=o>-&gt;</span><span class=n>create_instance</span><span class=p>(</span><span class=n>object</span><span class=p>)</span>
+</span></span><span class=line><span class=cl>   <span class=err>│</span>
+</span></span><span class=line><span class=cl>   <span class=err>▼</span>
+</span></span><span class=line><span class=cl><span class=mf>9.</span> <span class=err>调用脚本方法</span>
+</span></span><span class=line><span class=cl>   <span class=err>└──</span> <span class=n>object</span><span class=o>-&gt;</span><span class=n>callp</span><span class=p>(</span><span class=s2>&#34;my_method&#34;</span><span class=p>,</span> <span class=o>...</span><span class=p>)</span>
+</span></span><span class=line><span class=cl>   <span class=err>└──</span> <span class=n>script_instance</span><span class=o>-&gt;</span><span class=n>callp</span><span class=p>(</span><span class=s2>&#34;my_method&#34;</span><span class=p>,</span> <span class=o>...</span><span class=p>)</span>
+</span></span></code></pre></div><hr><h2 id=6-与其他模块的交互>6. 与其他模块的交互</h2><h3 id=61-模块与-classdb>6.1 模块与 ClassDB</h3><div class=highlight><pre tabindex=0 class=chroma><code class=language-gdscript3 data-lang=gdscript3><span class=line><span class=cl><span class=err>模块初始化</span>
+</span></span><span class=line><span class=cl>    <span class=err>│</span>
+</span></span><span class=line><span class=cl>    <span class=err>▼</span>
+</span></span><span class=line><span class=cl><span class=n>ClassDB</span><span class=p>::</span><span class=n>register_class</span><span class=o>&lt;</span><span class=n>MyClass</span><span class=o>&gt;</span><span class=p>()</span>
+</span></span><span class=line><span class=cl>    <span class=err>│</span>
+</span></span><span class=line><span class=cl>    <span class=err>▼</span>
+</span></span><span class=line><span class=cl><span class=n>ClassDB</span><span class=p>::</span><span class=n>classes</span><span class=p>[</span><span class=s2>&#34;MyClass&#34;</span><span class=p>]</span>
+</span></span><span class=line><span class=cl>    <span class=err>├──</span> <span class=n>creation_func</span> <span class=o>=</span> <span class=o>&amp;</span><span class=n>MyClass</span><span class=p>::</span><span class=n>create</span>
+</span></span><span class=line><span class=cl>    <span class=err>├──</span> <span class=n>method_map</span> <span class=o>=</span> <span class=p>{</span><span class=o>...</span><span class=p>}</span>
+</span></span><span class=line><span class=cl>    <span class=err>├──</span> <span class=n>property_map</span> <span class=o>=</span> <span class=p>{</span><span class=o>...</span><span class=p>}</span>
+</span></span><span class=line><span class=cl>    <span class=err>└──</span> <span class=n>signal_map</span> <span class=o>=</span> <span class=p>{</span><span class=o>...</span><span class=p>}</span>
+</span></span><span class=line><span class=cl>    <span class=err>│</span>
+</span></span><span class=line><span class=cl>    <span class=err>▼</span>
+</span></span><span class=line><span class=cl><span class=ne>GDScript</span><span class=p>:</span> <span class=k>var</span> <span class=n>obj</span> <span class=o>=</span> <span class=n>MyClass</span><span class=o>.</span><span class=n>new</span><span class=p>()</span>
+</span></span><span class=line><span class=cl>    <span class=err>│</span>
+</span></span><span class=line><span class=cl>    <span class=err>▼</span>
+</span></span><span class=line><span class=cl><span class=n>ClassDB</span><span class=p>::</span><span class=n>instantiate</span><span class=p>(</span><span class=s2>&#34;MyClass&#34;</span><span class=p>)</span>
+</span></span><span class=line><span class=cl>    <span class=err>└──</span> <span class=n>creation_func</span><span class=p>()</span> <span class=err>→</span> <span class=n>memnew</span><span class=p>(</span><span class=n>MyClass</span><span class=p>)</span>
+</span></span></code></pre></div><h3 id=62-模块与-scriptserver>6.2 模块与 ScriptServer</h3><div class=highlight><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>脚本模块初始化
+</span></span><span class=line><span class=cl>    │
+</span></span><span class=line><span class=cl>    ▼
+</span></span><span class=line><span class=cl>ScriptServer::register_language(&amp;language)
+</span></span><span class=line><span class=cl>    │
+</span></span><span class=line><span class=cl>    ▼
+</span></span><span class=line><span class=cl>ScriptServer::languages = [&amp;gdscript, &amp;csharp, ...]
+</span></span><span class=line><span class=cl>    │
+</span></span><span class=line><span class=cl>    ▼
+</span></span><span class=line><span class=cl>用户加载脚本
+</span></span><span class=line><span class=cl>    │
+</span></span><span class=line><span class=cl>    ▼
+</span></span><span class=line><span class=cl>ResourceLoader 匹配扩展名
+</span></span><span class=line><span class=cl>    │
+</span></span><span class=line><span class=cl>    ▼
+</span></span><span class=line><span class=cl>对应语言的 create_script()
+</span></span></code></pre></div><h3 id=63-模块与-resourceloader>6.3 模块与 ResourceLoader</h3><div class=highlight><pre tabindex=0 class=chroma><code class=language-gdscript3 data-lang=gdscript3><span class=line><span class=cl><span class=err>模块初始化</span>
+</span></span><span class=line><span class=cl>    <span class=err>│</span>
+</span></span><span class=line><span class=cl>    <span class=err>▼</span>
+</span></span><span class=line><span class=cl><span class=ne>ResourceLoader</span><span class=p>::</span><span class=n>add_resource_format_loader</span><span class=p>(</span><span class=n>loader</span><span class=p>)</span>
+</span></span><span class=line><span class=cl>    <span class=err>│</span>
+</span></span><span class=line><span class=cl>    <span class=err>▼</span>
+</span></span><span class=line><span class=cl><span class=ne>ResourceLoader</span><span class=p>::</span><span class=n>loader</span> <span class=o>=</span> <span class=p>[</span><span class=n>gd_loader</span><span class=p>,</span> <span class=n>gltf_loader</span><span class=p>,</span> <span class=o>...</span><span class=p>]</span>
+</span></span><span class=line><span class=cl>    <span class=err>│</span>
+</span></span><span class=line><span class=cl>    <span class=err>▼</span>
+</span></span><span class=line><span class=cl><span class=err>用户加载资源</span>
+</span></span><span class=line><span class=cl>    <span class=err>│</span>
+</span></span><span class=line><span class=cl>    <span class=err>▼</span>
+</span></span><span class=line><span class=cl><span class=ne>ResourceLoader</span><span class=p>::</span><span class=nb>load</span><span class=p>(</span><span class=s2>&#34;file.gd&#34;</span><span class=p>)</span>
+</span></span><span class=line><span class=cl>    <span class=err>│</span>
+</span></span><span class=line><span class=cl>    <span class=err>▼</span>
+</span></span><span class=line><span class=cl><span class=err>遍历</span> <span class=n>loader</span><span class=err>，匹配扩展名</span>
+</span></span><span class=line><span class=cl>    <span class=err>│</span>
+</span></span><span class=line><span class=cl>    <span class=err>▼</span>
+</span></span><span class=line><span class=cl><span class=n>GDScriptResourceLoader</span><span class=p>::</span><span class=nb>load</span><span class=p>(</span><span class=s2>&#34;file.gd&#34;</span><span class=p>)</span>
+</span></span></code></pre></div><h3 id=64-gdextension-与-classdb>6.4 GDExtension 与 ClassDB</h3><div class=highlight><pre tabindex=0 class=chroma><code class=language-gdscript3 data-lang=gdscript3><span class=line><span class=cl><span class=n>GDExtension</span> <span class=err>加载</span>
+</span></span><span class=line><span class=cl>    <span class=err>│</span>
+</span></span><span class=line><span class=cl>    <span class=err>▼</span>
+</span></span><span class=line><span class=cl><span class=err>扩展库注册类</span>
+</span></span><span class=line><span class=cl>    <span class=err>│</span>
+</span></span><span class=line><span class=cl>    <span class=err>▼</span>
+</span></span><span class=line><span class=cl><span class=n>ClassDB</span><span class=p>::</span><span class=n>register_extension_class</span><span class=p>(</span><span class=o>...</span><span class=p>)</span>
+</span></span><span class=line><span class=cl>    <span class=err>│</span>
+</span></span><span class=line><span class=cl>    <span class=err>▼</span>
+</span></span><span class=line><span class=cl><span class=n>ClassDB</span><span class=p>::</span><span class=n>classes</span><span class=p>[</span><span class=s2>&#34;ExtensionClass&#34;</span><span class=p>]</span>
+</span></span><span class=line><span class=cl>    <span class=err>├──</span> <span class=n>creation_func</span> <span class=o>=</span> <span class=err>扩展库提供的回调</span>
+</span></span><span class=line><span class=cl>    <span class=err>└──</span> <span class=n>method_map</span> <span class=o>=</span> <span class=p>{</span><span class=err>扩展库注册的方法</span><span class=p>}</span>
+</span></span><span class=line><span class=cl>    <span class=err>│</span>
+</span></span><span class=line><span class=cl>    <span class=err>▼</span>
+</span></span><span class=line><span class=cl><span class=ne>GDScript</span><span class=p>:</span> <span class=k>var</span> <span class=n>obj</span> <span class=o>=</span> <span class=n>ExtensionClass</span><span class=o>.</span><span class=n>new</span><span class=p>()</span>
+</span></span><span class=line><span class=cl>    <span class=err>│</span>
+</span></span><span class=line><span class=cl>    <span class=err>▼</span>
+</span></span><span class=line><span class=cl><span class=n>ClassDB</span><span class=p>::</span><span class=n>instantiate</span><span class=p>(</span><span class=s2>&#34;ExtensionClass&#34;</span><span class=p>)</span>
+</span></span><span class=line><span class=cl>    <span class=err>└──</span> <span class=err>扩展库的</span> <span class=n>create_instance_func</span><span class=p>()</span>
+</span></span></code></pre></div><hr><h2 id=7-内存与生命周期>7. 内存与生命周期</h2><h3 id=71-模块单例生命周期>7.1 模块单例生命周期</h3><div class=highlight><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>initialize_&lt;module&gt;_module(SCENE)
+</span></span><span class=line><span class=cl>    └── memnew(ModuleSingleton)
+</span></span><span class=line><span class=cl>    │
+</span></span><span class=line><span class=cl>    ▼
+</span></span><span class=line><span class=cl>运行期间
+</span></span><span class=line><span class=cl>    └── ModuleSingleton 持续运行
+</span></span><span class=line><span class=cl>    │
+</span></span><span class=line><span class=cl>    ▼
+</span></span><span class=line><span class=cl>uninitialize_&lt;module&gt;_module(SCENE)
+</span></span><span class=line><span class=cl>    └── memdelete(ModuleSingleton)
+</span></span></code></pre></div><h3 id=72-脚本语言生命周期>7.2 脚本语言生命周期</h3><div class=highlight><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>initialize_gdscript_module(SCENE)
+</span></span><span class=line><span class=cl>    ├── memnew(GDScriptLanguage)
+</span></span><span class=line><span class=cl>    └── ScriptServer::register_language()
+</span></span><span class=line><span class=cl>    │
+</span></span><span class=line><span class=cl>    ▼
+</span></span><span class=line><span class=cl>运行期间
+</span></span><span class=line><span class=cl>    ├── GDScriptLanguage 管理所有脚本
+</span></span><span class=line><span class=cl>    └── 编译、缓存脚本
+</span></span><span class=line><span class=cl>    │
+</span></span><span class=line><span class=cl>    ▼
+</span></span><span class=line><span class=cl>uninitialize_gdscript_module(SCENE)
+</span></span><span class=line><span class=cl>    ├── ScriptServer::unregister_language()
+</span></span><span class=line><span class=cl>    └── memdelete(GDScriptLanguage)
+</span></span></code></pre></div><h3 id=73-gdextension-生命周期>7.3 GDExtension 生命周期</h3><div class=highlight><pre tabindex=0 class=chroma><code class=language-gdscript3 data-lang=gdscript3><span class=line><span class=cl><span class=err>项目加载</span>
+</span></span><span class=line><span class=cl>    <span class=err>└──</span> <span class=n>GDExtension</span><span class=p>::</span><span class=nb>load</span><span class=p>()</span>
+</span></span><span class=line><span class=cl>    <span class=err>│</span>
+</span></span><span class=line><span class=cl>    <span class=err>▼</span>
+</span></span><span class=line><span class=cl><span class=n>initialize</span><span class=p>(</span><span class=n>LEVEL_SCENE</span><span class=p>)</span>
+</span></span><span class=line><span class=cl>    <span class=err>└──</span> <span class=err>扩展库注册类</span>
+</span></span><span class=line><span class=cl>    <span class=err>│</span>
+</span></span><span class=line><span class=cl>    <span class=err>▼</span>
+</span></span><span class=line><span class=cl><span class=err>运行期间</span>
+</span></span><span class=line><span class=cl>    <span class=err>└──</span> <span class=err>扩展类实例正常使用</span>
+</span></span><span class=line><span class=cl>    <span class=err>│</span>
+</span></span><span class=line><span class=cl>    <span class=err>▼</span>
+</span></span><span class=line><span class=cl><span class=err>项目卸载</span>
+</span></span><span class=line><span class=cl>    <span class=err>└──</span> <span class=n>deinitialize</span><span class=p>(</span><span class=n>LEVEL_SCENE</span><span class=p>)</span>
+</span></span><span class=line><span class=cl>    <span class=err>└──</span> <span class=n>GDExtension</span><span class=p>::</span><span class=n>close_library</span><span class=p>()</span>
+</span></span></code></pre></div><hr><h2 id=8-线程模型>8. 线程模型</h2><h3 id=81-模块初始化的线程安全>8.1 模块初始化的线程安全</h3><ul><li>模块初始化在主线程执行</li><li>ClassDB 注册使用锁保护</li><li>ScriptServer 注册使用锁保护</li></ul><h3 id=82-脚本执行的线程安全>8.2 脚本执行的线程安全</h3><ul><li>GDScript 默认在主线程执行</li><li>C# 默认在主线程执行</li><li>可通过 <code>WorkerThreadPool</code> 在子线程执行任务</li></ul><h3 id=83-gdextension-的线程安全>8.3 GDExtension 的线程安全</h3><ul><li>扩展库需自行处理线程安全</li><li>引擎提供的 GDExtensionInterface 是线程安全的</li><li>扩展类的方法调用在调用方线程执行</li></ul><hr><h2 id=9-错误处理与日志>9. 错误处理与日志</h2><h3 id=91-模块加载错误>9.1 模块加载错误</h3><div class=highlight><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=c1>// 模块初始化失败
+</span></span></span><span class=line><span class=cl><span class=k>if</span> <span class=p>(</span><span class=o>!</span><span class=n>script_language_gd</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=n>ERR_PRINT</span><span class=p>(</span><span class=s>&#34;Failed to initialize GDScript language&#34;</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=k>return</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></div><h3 id=92-gdextension-加载错误>9.2 GDExtension 加载错误</h3><div class=highlight><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=n>Error</span> <span class=n>GDExtension</span><span class=o>::</span><span class=n>open_library</span><span class=p>(</span><span class=k>const</span> <span class=n>String</span> <span class=o>&amp;</span><span class=n>p_path</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=n>Error</span> <span class=n>err</span> <span class=o>=</span> <span class=n>OS</span><span class=o>::</span><span class=n>get_singleton</span><span class=p>()</span><span class=o>-&gt;</span><span class=n>open_dynamic_library</span><span class=p>(</span><span class=n>p_path</span><span class=p>,</span> <span class=n>library</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=k>if</span> <span class=p>(</span><span class=n>err</span> <span class=o>!=</span> <span class=n>OK</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=n>ERR_PRINT</span><span class=p>(</span><span class=s>&#34;Failed to load GDExtension library: &#34;</span> <span class=o>+</span> <span class=n>p_path</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>        <span class=k>return</span> <span class=n>err</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=p>}</span>
+</span></span><span class=line><span class=cl>    <span class=k>return</span> <span class=n>OK</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></div><h3 id=93-脚本编译错误>9.3 脚本编译错误</h3><ul><li>GDScript 编译错误通过 <code>GDScriptLanguage::debug_get_errors()</code> 获取</li><li>C# 编译错误通过 Mono 运行时获取</li><li>错误显示在编辑器的"输出"面板</li></ul><hr><h2 id=10-配置与可扩展性>10. 配置与可扩展性</h2><h3 id=101-启用禁用模块>10.1 启用/禁用模块</h3><div class=highlight><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl><span class=c1># 编译时禁用模块</span>
+</span></span><span class=line><span class=cl>scons <span class=nv>module_mono_enabled</span><span class=o>=</span>no
+</span></span><span class=line><span class=cl>scons <span class=nv>module_webrtc_enabled</span><span class=o>=</span>no
+</span></span></code></pre></div><h3 id=102-自定义模块>10.2 自定义模块</h3><p>在 <code>modules/</code> 下创建新模块：</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>modules/my_module/
+</span></span><span class=line><span class=cl>├── config.py          # 模块配置
+</span></span><span class=line><span class=cl>├── SCsub              # 编译配置
+</span></span><span class=line><span class=cl>├── register_types.h   # 注册声明
+</span></span><span class=line><span class=cl>├── register_types.cpp # 注册实现
+</span></span><span class=line><span class=cl>├── my_class.h         # 类声明
+</span></span><span class=line><span class=cl>└── my_class.cpp       # 类实现
+</span></span></code></pre></div><div class=highlight><pre tabindex=0 class=chroma><code class=language-python data-lang=python><span class=line><span class=cl><span class=c1># modules/my_module/config.py</span>
+</span></span><span class=line><span class=cl><span class=k>def</span> <span class=nf>can_build</span><span class=p>(</span><span class=n>env</span><span class=p>,</span> <span class=n>platform</span><span class=p>):</span>
+</span></span><span class=line><span class=cl>    <span class=k>return</span> <span class=kc>True</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=k>def</span> <span class=nf>configure</span><span class=p>(</span><span class=n>env</span><span class=p>):</span>
+</span></span><span class=line><span class=cl>    <span class=k>pass</span>
+</span></span></code></pre></div><div class=highlight><pre tabindex=0 class=chroma><code class=language-python data-lang=python><span class=line><span class=cl><span class=c1># modules/my_module/SCsub</span>
+</span></span><span class=line><span class=cl><span class=n>Import</span><span class=p>(</span><span class=s2>&#34;env&#34;</span><span class=p>)</span>
+</span></span><span class=line><span class=cl><span class=n>env</span><span class=o>.</span><span class=n>add_source_files</span><span class=p>(</span><span class=n>env</span><span class=o>.</span><span class=n>modules_sources</span><span class=p>,</span> <span class=s2>&#34;*.cpp&#34;</span><span class=p>)</span>
+</span></span></code></pre></div><div class=highlight><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=c1>// modules/my_module/register_types.cpp
+</span></span></span><span class=line><span class=cl><span class=cp>#include</span> <span class=cpf>&#34;register_types.h&#34;</span><span class=cp>
+</span></span></span><span class=line><span class=cl><span class=cp>#include</span> <span class=cpf>&#34;core/object/class_db.h&#34;</span><span class=cp>
+</span></span></span><span class=line><span class=cl><span class=cp>#include</span> <span class=cpf>&#34;my_class.h&#34;</span><span class=cp>
+</span></span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=kt>void</span> <span class=nf>initialize_my_module_module</span><span class=p>(</span><span class=n>ModuleInitializationLevel</span> <span class=n>p_level</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=k>if</span> <span class=p>(</span><span class=n>p_level</span> <span class=o>==</span> <span class=n>MODULE_INITIALIZATION_LEVEL_SCENE</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=n>ClassDB</span><span class=o>::</span><span class=n>register_class</span><span class=o>&lt;</span><span class=n>MyClass</span><span class=o>&gt;</span><span class=p>();</span>
+</span></span><span class=line><span class=cl>    <span class=p>}</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=kt>void</span> <span class=nf>uninitialize_my_module_module</span><span class=p>(</span><span class=n>ModuleInitializationLevel</span> <span class=n>p_level</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=k>if</span> <span class=p>(</span><span class=n>p_level</span> <span class=o>==</span> <span class=n>MODULE_INITIALIZATION_LEVEL_SCENE</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=c1>// 清理
+</span></span></span><span class=line><span class=cl>    <span class=p>}</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></div><h3 id=103-gdextension-配置>10.3 GDExtension 配置</h3><div class=highlight><pre tabindex=0 class=chroma><code class=language-ini data-lang=ini><span class=line><span class=cl><span class=c1># my_extension.gdextension</span>
+</span></span><span class=line><span class=cl><span class=k>[configuration]</span>
+</span></span><span class=line><span class=cl><span class=na>entry_symbol</span> <span class=o>=</span> <span class=s>&#34;my_extension_init&#34;</span>
+</span></span><span class=line><span class=cl><span class=na>compatibility_minimum</span> <span class=o>=</span> <span class=s>4.2</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=k>[libraries]</span>
+</span></span><span class=line><span class=cl><span class=na>macos.debug</span> <span class=o>=</span> <span class=s>&#34;res://bin/macos/libmy_extension.macos.debug.dylib&#34;</span>
+</span></span><span class=line><span class=cl><span class=na>macos.release</span> <span class=o>=</span> <span class=s>&#34;res://bin/macos/libmy_extension.macos.release.dylib&#34;</span>
+</span></span><span class=line><span class=cl><span class=na>windows.debug.x86_64</span> <span class=o>=</span> <span class=s>&#34;res://bin/windows/libmy_extension.windows.debug.x86_64.dll&#34;</span>
+</span></span><span class=line><span class=cl><span class=na>windows.release.x86_64</span> <span class=o>=</span> <span class=s>&#34;res://bin/windows/libmy_extension.windows.release.x86_64.dll&#34;</span>
+</span></span><span class=line><span class=cl><span class=na>linux.debug.x86_64</span> <span class=o>=</span> <span class=s>&#34;res://bin/linux/libmy_extension.linux.debug.x86_64.so&#34;</span>
+</span></span><span class=line><span class=cl><span class=na>linux.release.x86_64</span> <span class=o>=</span> <span class=s>&#34;res://bin/linux/libmy_extension.linux.release.x86_64.so&#34;</span>
+</span></span></code></pre></div><hr><h2 id=11-性能考量>11. 性能考量</h2><h3 id=111-模块编译优化>11.1 模块编译优化</h3><ul><li><strong>按需编译</strong>：禁用不用的模块减小体积</li><li><strong>LTO</strong>：链接时优化提升性能</li><li><strong>调试符号</strong>：dev_build 启用，便于调试</li></ul><h3 id=112-脚本性能>11.2 脚本性能</h3><ul><li><strong>GDScript</strong>：解释执行，约 C++ 的 1/10 速度</li><li><strong>C#</strong>：JIT 编译，接近 C++ 速度</li><li><strong>GDExtension</strong>：原生 C++，无性能损失</li></ul><h3 id=113-gdextension-调用开销>11.3 GDExtension 调用开销</h3><ul><li>每次跨边界调用有少量开销（参数转换）</li><li>频繁调用的小函数建议内联到扩展库</li><li>批量操作减少调用次数</li></ul><h3 id=114-类注册开销>11.4 类注册开销</h3><ul><li>ClassDB 注册在启动时一次性完成</li><li>运行时无注册开销</li><li>类查找使用 StringName，O(1)</li></ul><hr><h2 id=12-调试技巧>12. 调试技巧</h2><h3 id=121-模块调试>12.1 模块调试</h3><ul><li>在 <code>initialize_&lt;module>_module</code> 添加日志</li><li>使用 <code>--verbose</code> 查看启动日志</li><li><code>--check-only</code> 验证模块加载</li></ul><h3 id=122-脚本调试>12.2 脚本调试</h3><ul><li>编辑器内置调试器</li><li><code>print()</code> / <code>push_error()</code> / <code>push_warning()</code></li><li>断点、单步、变量查看</li></ul><h3 id=123-gdextension-调试>12.3 GDExtension 调试</h3><ul><li>在扩展库中添加日志</li><li>使用平台调试器（gdb/lldb/Visual Studio）</li><li><code>--verbose</code> 查看加载日志</li></ul><h3 id=124-类注册检查>12.4 类注册检查</h3><div class=highlight><pre tabindex=0 class=chroma><code class=language-gdscript data-lang=gdscript><span class=line><span class=cl><span class=c1># 列出所有注册的类</span>
+</span></span><span class=line><span class=cl><span class=nb>print</span><span class=p>(</span><span class=nc>ClassDB</span><span class=p>::</span><span class=nf>get_class_list</span><span class=p>())</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=c1># 检查类是否存在</span>
+</span></span><span class=line><span class=cl><span class=nb>print</span><span class=p>(</span><span class=nc>ClassDB</span><span class=p>::</span><span class=nf>class_exists</span><span class=p>(</span><span class=s2>&#34;MyClass&#34;</span><span class=p>))</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=c1># 检查继承关系</span>
+</span></span><span class=line><span class=cl><span class=nb>print</span><span class=p>(</span><span class=nc>ClassDB</span><span class=p>::</span><span class=nf>is_parent_class</span><span class=p>(</span><span class=s2>&#34;MyClass&#34;</span><span class=p>,</span> <span class=s2>&#34;Node&#34;</span><span class=p>))</span>
+</span></span></code></pre></div><hr><h2 id=13-常见陷阱>13. 常见陷阱</h2><h3 id=131-模块初始化顺序>13.1 模块初始化顺序</h3><ul><li>模块初始化按级别顺序：CORE → SERVERS → SCENE → EDITOR</li><li>不能在低级别使用高级别的类</li><li>例如：CORE 级别不能使用 Node（SCENE 级别才注册）</li></ul><h3 id=132-脚本语言冲突>13.2 脚本语言冲突</h3><ul><li>多个脚本语言可能注册同名类</li><li>使用命名空间或前缀避免冲突</li></ul><h3 id=133-gdextension-abi-兼容>13.3 GDExtension ABI 兼容</h3><ul><li>GDExtension 与引擎版本绑定</li><li>升级引擎可能需要重新编译扩展</li><li>使用 <code>compatibility_minimum</code> 声明兼容版本</li></ul><h3 id=134-循环依赖>13.4 循环依赖</h3><ul><li>模块 A 依赖模块 B，模块 B 依赖模块 A</li><li>通过接口抽象打破循环</li><li>或将公共部分提取到 core/</li></ul><h3 id=135-资源加载器冲突>13.5 资源加载器冲突</h3><ul><li>多个加载器匹配同一扩展名</li><li>后注册的优先级高</li><li>使用唯一扩展名避免冲突</li></ul><h3 id=136-编辑器插件未启用-tool>13.6 编辑器插件未启用 @tool</h3><ul><li>编辑器插件必须加 <code>@tool</code> 注解</li><li>否则无法在编辑器中运行</li></ul><hr><h2 id=14-源码阅读建议>14. 源码阅读建议</h2><h3 id=141-推荐阅读顺序>14.1 推荐阅读顺序</h3><ol><li><strong>模块注册入口</strong>：<code>modules/register_module_types.h</code>、<code>modules/register_module_types.cpp</code></li><li><strong>简单模块</strong>：<code>modules/navigation/register_types.cpp</code></li><li><strong>脚本模块</strong>：<code>modules/gdscript/register_types.cpp</code></li><li><strong>GDExtension</strong>：<code>core/extension/gdextension.h</code>、<code>core/extension/gdextension.cpp</code></li><li><strong>EditorPlugin</strong>：<code>editor/plugins/editor_plugin.h</code></li></ol><h3 id=142-实践建议>14.2 实践建议</h3><ul><li>创建一个简单的自定义模块</li><li>注册一个自定义类，从 GDScript 调用</li><li>创建一个 GDExtension，加载到项目中</li><li>编写一个 EditorPlugin，添加自定义节点</li></ul><h3 id=143-关键搜索>14.3 关键搜索</h3><div class=highlight><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl><span class=c1># 查找所有模块的 register_types</span>
+</span></span><span class=line><span class=cl>find modules/ -name <span class=s2>&#34;register_types.cpp&#34;</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=c1># 查找模块初始化级别使用</span>
+</span></span><span class=line><span class=cl>grep -r <span class=s2>&#34;MODULE_INITIALIZATION_LEVEL&#34;</span> modules/
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=c1># 查找 GDExtension 类注册</span>
+</span></span><span class=line><span class=cl>grep -r <span class=s2>&#34;register_extension_class&#34;</span> core/extension/
+</span></span></code></pre></div><hr><h2 id=15-参考与延伸>15. 参考与延伸</h2><h3 id=151-关键源码索引>15.1 关键源码索引</h3><table><thead><tr><th>主题</th><th>文件</th></tr></thead><tbody><tr><td>模块注册入口</td><td><code>modules/register_module_types.h</code>、<code>modules/register_module_types.cpp</code></td></tr><tr><td>GDScript 模块</td><td><code>modules/gdscript/register_types.cpp</code></td></tr><tr><td>C# 模块</td><td><code>modules/mono/register_types.cpp</code></td></tr><tr><td>Navigation 模块</td><td><code>modules/navigation/register_types.cpp</code></td></tr><tr><td>GDExtension</td><td><code>core/extension/gdextension.h</code>、<code>core/extension/gdextension.cpp</code></td></tr><tr><td>EditorPlugin</td><td><code>editor/plugins/editor_plugin.h</code></td></tr><tr><td>ScriptServer</td><td><code>core/object/script_language.h</code></td></tr><tr><td>ClassDB</td><td><code>core/object/class_db.h</code></td></tr></tbody></table><h3 id=152-相关文档>15.2 相关文档</h3><ul><li><a href=./01-%e6%80%bb%e4%bd%93%e6%9e%b6%e6%9e%84.md>01-总体架构.md</a>：modules/ 在整体架构中的位置</li><li><a href=./02-%e6%a0%b8%e5%bf%83%e6%a6%82%e5%bf%b5.md>02-核心概念.md</a>：ClassDB 注册机制</li><li><a href=./03-%e5%90%af%e5%8a%a8%e6%b5%81%e7%a8%8b.md>03-启动流程.md</a>：模块初始化顺序</li><li><a href=./06-C++%e6%8a%80%e6%9c%af%e5%88%86%e6%9e%90.md>06-C++技术分析.md</a>：GDCLASS 宏</li></ul><h3 id=153-模块系统架构图>15.3 模块系统架构图</h3><div class=highlight><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>┌─────────────────────────────────────────────────────────────────┐
+</span></span><span class=line><span class=cl>│                      Godot 扩展体系                              │
+</span></span><span class=line><span class=cl>├─────────────────────────────────────────────────────────────────┤
+</span></span><span class=line><span class=cl>│                                                                 │
+</span></span><span class=line><span class=cl>│  内置模块（modules/）                                            │
+</span></span><span class=line><span class=cl>│  ┌─────────────────────────────────────────────────────────┐   │
+</span></span><span class=line><span class=cl>│  │  GDScript  │  C#  │  Navigation  │  WebRTC  │  GLTF  │   │   │
+</span></span><span class=line><span class=cl>│  │  编译时集成，最高性能，可访问全部引擎内部 API                │   │
+</span></span><span class=line><span class=cl>│  └─────────────────────────────────────────────────────────┘   │
+</span></span><span class=line><span class=cl>│                          │                                      │
+</span></span><span class=line><span class=cl>│                          │ register_types.cpp                   │
+</span></span><span class=line><span class=cl>│                          ▼                                      │
+</span></span><span class=line><span class=cl>│  ┌─────────────────────────────────────────────────────────┐   │
+</span></span><span class=line><span class=cl>│  │              ClassDB / ScriptServer                      │   │
+</span></span><span class=line><span class=cl>│  │  register_class&lt;T&gt;() / register_language()               │   │
+</span></span><span class=line><span class=cl>│  └─────────────────────────────────────────────────────────┘   │
+</span></span><span class=line><span class=cl>│                                                                 │
+</span></span><span class=line><span class=cl>│  GDExtension（运行时扩展）                                       │
+</span></span><span class=line><span class=cl>│  ┌─────────────────────────────────────────────────────────┐   │
+</span></span><span class=line><span class=cl>│  │  动态加载 .dll/.so/.dylib                                │   │
+</span></span><span class=line><span class=cl>│  │  通过 C ABI 接口与引擎交互                                │   │
+</span></span><span class=line><span class=cl>│  │  跨语言（C++/Rust/Go/Zig）支持                            │   │
+</span></span><span class=line><span class=cl>│  │  无需重新编译引擎                                         │   │
+</span></span><span class=line><span class=cl>│  └─────────────────────────────────────────────────────────┘   │
+</span></span><span class=line><span class=cl>│                          │                                      │
+</span></span><span class=line><span class=cl>│                          │ GDExtensionInterface                 │
+</span></span><span class=line><span class=cl>│                          ▼                                      │
+</span></span><span class=line><span class=cl>│  ┌─────────────────────────────────────────────────────────┐   │
+</span></span><span class=line><span class=cl>│  │              ClassDB（扩展类注册）                        │   │
+</span></span><span class=line><span class=cl>│  │  register_extension_class()                              │   │
+</span></span><span class=line><span class=cl>│  └─────────────────────────────────────────────────────────┘   │
+</span></span><span class=line><span class=cl>│                                                                 │
+</span></span><span class=line><span class=cl>│  EditorPlugin（编辑器插件）                                      │
+</span></span><span class=line><span class=cl>│  ┌─────────────────────────────────────────────────────────┐   │
+</span></span><span class=line><span class=cl>│  │  纯脚本（GDScript/C#）                                    │   │
+</span></span><span class=line><span class=cl>│  │  仅编辑器环境                                             │   │
+</span></span><span class=line><span class=cl>│  │  添加自定义节点、面板、工具                                │   │
+</span></span><span class=line><span class=cl>│  │  通过 addons/ 目录组织                                    │   │
+</span></span><span class=line><span class=cl>│  └─────────────────────────────────────────────────────────┘   │
+</span></span><span class=line><span class=cl>│                                                                 │
+</span></span><span class=line><span class=cl>└─────────────────────────────────────────────────────────────────┘
+</span></span></code></pre></div><h3 id=154-模块初始化时序图>15.4 模块初始化时序图</h3><div class=highlight><pre tabindex=0 class=chroma><code class=language-gdscript3 data-lang=gdscript3><span class=line><span class=cl><span class=n>sequenceDiagram</span>
+</span></span><span class=line><span class=cl>    <span class=n>participant</span> <span class=n>Main</span> <span class=n>as</span> <span class=n>Main</span>
+</span></span><span class=line><span class=cl>    <span class=n>participant</span> <span class=n>CD</span> <span class=n>as</span> <span class=n>ClassDB</span>
+</span></span><span class=line><span class=cl>    <span class=n>participant</span> <span class=n>SS</span> <span class=n>as</span> <span class=n>ScriptServer</span>
+</span></span><span class=line><span class=cl>    <span class=n>participant</span> <span class=n>Mod</span> <span class=n>as</span> <span class=err>各模块</span>
+</span></span><span class=line><span class=cl>    <span class=n>participant</span> <span class=n>GDE</span> <span class=n>as</span> <span class=n>GDExtension</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=n>Main</span><span class=o>-&gt;&gt;</span><span class=n>CD</span><span class=p>:</span> <span class=n>register_core_types</span><span class=p>()</span>
+</span></span><span class=line><span class=cl>    <span class=n>Main</span><span class=o>-&gt;&gt;</span><span class=n>Mod</span><span class=p>:</span> <span class=n>initialize_modules</span><span class=p>(</span><span class=n>CORE</span><span class=p>)</span>
+</span></span><span class=line><span class=cl>    <span class=n>Main</span><span class=o>-&gt;&gt;</span><span class=n>CD</span><span class=p>:</span> <span class=n>register_server_types</span><span class=p>()</span>
+</span></span><span class=line><span class=cl>    <span class=n>Main</span><span class=o>-&gt;&gt;</span><span class=n>Mod</span><span class=p>:</span> <span class=n>initialize_modules</span><span class=p>(</span><span class=n>SERVERS</span><span class=p>)</span>
+</span></span><span class=line><span class=cl>    <span class=n>Main</span><span class=o>-&gt;&gt;</span><span class=n>CD</span><span class=p>:</span> <span class=n>register_scene_types</span><span class=p>()</span>
+</span></span><span class=line><span class=cl>    <span class=n>Main</span><span class=o>-&gt;&gt;</span><span class=n>Mod</span><span class=p>:</span> <span class=n>initialize_modules</span><span class=p>(</span><span class=n>SCENE</span><span class=p>)</span>
+</span></span><span class=line><span class=cl>    <span class=n>Mod</span><span class=o>-&gt;&gt;</span><span class=n>CD</span><span class=p>:</span> <span class=n>register_class</span><span class=o>&lt;</span><span class=n>T</span><span class=o>&gt;</span><span class=p>()</span>
+</span></span><span class=line><span class=cl>    <span class=n>Mod</span><span class=o>-&gt;&gt;</span><span class=n>SS</span><span class=p>:</span> <span class=n>register_language</span><span class=p>()</span>
+</span></span><span class=line><span class=cl>    <span class=n>Main</span><span class=o>-&gt;&gt;</span><span class=n>CD</span><span class=p>:</span> <span class=n>register_editor_types</span><span class=p>()</span>
+</span></span><span class=line><span class=cl>    <span class=n>Main</span><span class=o>-&gt;&gt;</span><span class=n>Mod</span><span class=p>:</span> <span class=n>initialize_modules</span><span class=p>(</span><span class=n>EDITOR</span><span class=p>)</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=n>Note</span> <span class=n>over</span> <span class=n>GDE</span><span class=p>:</span> <span class=err>运行时加载</span>
+</span></span><span class=line><span class=cl>    <span class=n>Main</span><span class=o>-&gt;&gt;</span><span class=n>GDE</span><span class=p>:</span> <span class=n>GDExtension</span><span class=p>::</span><span class=nb>load</span><span class=p>()</span>
+</span></span><span class=line><span class=cl>    <span class=n>GDE</span><span class=o>-&gt;&gt;</span><span class=n>GDE</span><span class=p>:</span> <span class=n>open_library</span><span class=p>()</span>
+</span></span><span class=line><span class=cl>    <span class=n>GDE</span><span class=o>-&gt;&gt;</span><span class=n>GDE</span><span class=p>:</span> <span class=n>initialize</span><span class=p>(</span><span class=n>LEVEL_SCENE</span><span class=p>)</span>
+</span></span><span class=line><span class=cl>    <span class=n>GDE</span><span class=o>-&gt;&gt;</span><span class=n>CD</span><span class=p>:</span> <span class=n>register_extension_class</span><span class=p>()</span>
+</span></span></code></pre></div></div><footer class=article-footer><span>归档于</span>
+<a href=/categories/godot/>Godot</a></footer></article><aside class="toc glass-panel" aria-label=文章目录><strong>本文目录</strong><nav id=TableOfContents><ul><li><a href=#1-模块概述>1. 模块概述</a></li><li><a href=#2-关键文件清单>2. 关键文件清单</a></li><li><a href=#3-核心数据结构>3. 核心数据结构</a><ul><li><a href=#31-模块初始化的四个级别>3.1 模块初始化的四个级别</a></li><li><a href=#32-模块注册的标准结构>3.2 模块注册的标准结构</a></li><li><a href=#33-模块编译配置>3.3 模块编译配置</a></li></ul></li><li><a href=#4-核心类与职责>4. 核心类与职责</a><ul><li><a href=#41-gdscript-模块>4.1 GDScript 模块</a></li><li><a href=#42-c-模块>4.2 C# 模块</a></li><li><a href=#43-navigation-模块>4.3 Navigation 模块</a></li><li><a href=#44-gdextension-系统>4.4 GDExtension 系统</a></li><li><a href=#45-editorplugin-系统>4.5 EditorPlugin 系统</a></li></ul></li><li><a href=#5-关键算法与流程>5. 关键算法与流程</a><ul><li><a href=#51-模块编译流程>5.1 模块编译流程</a></li><li><a href=#52-模块注册流程>5.2 模块注册流程</a></li><li><a href=#53-gdextension-加载流程>5.3 GDExtension 加载流程</a></li><li><a href=#54-脚本语言注册流程>5.4 脚本语言注册流程</a></li></ul></li><li><a href=#6-与其他模块的交互>6. 与其他模块的交互</a><ul><li><a href=#61-模块与-classdb>6.1 模块与 ClassDB</a></li><li><a href=#62-模块与-scriptserver>6.2 模块与 ScriptServer</a></li><li><a href=#63-模块与-resourceloader>6.3 模块与 ResourceLoader</a></li><li><a href=#64-gdextension-与-classdb>6.4 GDExtension 与 ClassDB</a></li></ul></li><li><a href=#7-内存与生命周期>7. 内存与生命周期</a><ul><li><a href=#71-模块单例生命周期>7.1 模块单例生命周期</a></li><li><a href=#72-脚本语言生命周期>7.2 脚本语言生命周期</a></li><li><a href=#73-gdextension-生命周期>7.3 GDExtension 生命周期</a></li></ul></li><li><a href=#8-线程模型>8. 线程模型</a><ul><li><a href=#81-模块初始化的线程安全>8.1 模块初始化的线程安全</a></li><li><a href=#82-脚本执行的线程安全>8.2 脚本执行的线程安全</a></li><li><a href=#83-gdextension-的线程安全>8.3 GDExtension 的线程安全</a></li></ul></li><li><a href=#9-错误处理与日志>9. 错误处理与日志</a><ul><li><a href=#91-模块加载错误>9.1 模块加载错误</a></li><li><a href=#92-gdextension-加载错误>9.2 GDExtension 加载错误</a></li><li><a href=#93-脚本编译错误>9.3 脚本编译错误</a></li></ul></li><li><a href=#10-配置与可扩展性>10. 配置与可扩展性</a><ul><li><a href=#101-启用禁用模块>10.1 启用/禁用模块</a></li><li><a href=#102-自定义模块>10.2 自定义模块</a></li><li><a href=#103-gdextension-配置>10.3 GDExtension 配置</a></li></ul></li><li><a href=#11-性能考量>11. 性能考量</a><ul><li><a href=#111-模块编译优化>11.1 模块编译优化</a></li><li><a href=#112-脚本性能>11.2 脚本性能</a></li><li><a href=#113-gdextension-调用开销>11.3 GDExtension 调用开销</a></li><li><a href=#114-类注册开销>11.4 类注册开销</a></li></ul></li><li><a href=#12-调试技巧>12. 调试技巧</a><ul><li><a href=#121-模块调试>12.1 模块调试</a></li><li><a href=#122-脚本调试>12.2 脚本调试</a></li><li><a href=#123-gdextension-调试>12.3 GDExtension 调试</a></li><li><a href=#124-类注册检查>12.4 类注册检查</a></li></ul></li><li><a href=#13-常见陷阱>13. 常见陷阱</a><ul><li><a href=#131-模块初始化顺序>13.1 模块初始化顺序</a></li><li><a href=#132-脚本语言冲突>13.2 脚本语言冲突</a></li><li><a href=#133-gdextension-abi-兼容>13.3 GDExtension ABI 兼容</a></li><li><a href=#134-循环依赖>13.4 循环依赖</a></li><li><a href=#135-资源加载器冲突>13.5 资源加载器冲突</a></li><li><a href=#136-编辑器插件未启用-tool>13.6 编辑器插件未启用 @tool</a></li></ul></li><li><a href=#14-源码阅读建议>14. 源码阅读建议</a><ul><li><a href=#141-推荐阅读顺序>14.1 推荐阅读顺序</a></li><li><a href=#142-实践建议>14.2 实践建议</a></li><li><a href=#143-关键搜索>14.3 关键搜索</a></li></ul></li><li><a href=#15-参考与延伸>15. 参考与延伸</a><ul><li><a href=#151-关键源码索引>15.1 关键源码索引</a></li><li><a href=#152-相关文档>15.2 相关文档</a></li><li><a href=#153-模块系统架构图>15.3 模块系统架构图</a></li><li><a href=#154-模块初始化时序图>15.4 模块初始化时序图</a></li></ul></li></ul></nav></aside></div></main><footer class=site-footer><div class=footer-inner><p>&copy; 2023–2026 你的名字. 保留所有权利。</p><div class=footer-meta></div></div></footer><script defer src=https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js crossorigin=anonymous></script><script defer src=https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js crossorigin=anonymous></script><script>document.addEventListener("DOMContentLoaded",function(){typeof katex!="undefined"&&document.querySelectorAll(".katex-block[data-math]").forEach(function(e){try{katex.render(e.textContent,e,{displayMode:!0,throwOnError:!1})}catch{}}),typeof renderMathInElement=="function"&&renderMathInElement(document.body,{delimiters:[{left:"$$",right:"$$",display:!0},{left:"\\[",right:"\\]",display:!0},{left:"$",right:"$",display:!1},{left:"\\(",right:"\\)",display:!1}],ignoredTags:["script","noscript","style","textarea","pre","code"],throwOnError:!1})})</script><script src=/js/main.min.d67c76b16258bc785c9a7bda52b7326bf67bb61290c8e66e975ed27a7330b4c9.js integrity="sha256-1nx2sWJYvHhcmnvaUrcya/Z7thKQyOZul17SenMwtMk=" defer></script></body></html>

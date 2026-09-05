@@ -1,0 +1,691 @@
+<!doctype html><html lang=zh-CN dir=ltr><head><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><meta name=color-scheme content="light dark"><meta name=theme-color content="#08111f" media="(prefers-color-scheme: dark)"><meta name=theme-color content="#fff5e1" media="(prefers-color-scheme: light)"><script>document.documentElement.classList.add("js"),function(){try{var e,t=localStorage.getItem("site-theme");t==="light"||t==="dark"?document.documentElement.setAttribute("data-theme",t):document.documentElement.setAttribute("data-theme",window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"),e=localStorage.getItem("site-palette"),(e==="macos"||e==="github"||e==="gruvbox")&&document.documentElement.setAttribute("data-palette",e)}catch{}}()</script><title>Godot Learning-5 · 我的博客</title><meta name=description content='05 - 跨层调用链案例追踪 源码版本：Godot 4.8.dev（master 分支，2026-08-26） 证据等级：A（除非另行标注）
+概述 理解 Godot 源码的最佳方式是追踪完整的调用链——从用户代码（GDScript/C#）出发，穿越脚本系统、Object 系统、ClassDB、Server 层，最终到达底层硬件。本章节选取六个典型场景，完整呈现"从用户代码到 CPU"的调用路径。
+'><meta name=author content="你的名字"><link rel=canonical href=https://quhongbin.github.io/godot/05-%E8%B0%83%E7%94%A8%E9%93%BE%E6%A1%88%E4%BE%8B/><link rel=alternate hreflang=zh-CN href=https://quhongbin.github.io/godot/05-%E8%B0%83%E7%94%A8%E9%93%BE%E6%A1%88%E4%BE%8B/><meta property="og:type" content="article"><meta property="og:title" content="Godot Learning-5 · 我的博客"><meta property="og:description" content='05 - 跨层调用链案例追踪 源码版本：Godot 4.8.dev（master 分支，2026-08-26） 证据等级：A（除非另行标注）
+概述 理解 Godot 源码的最佳方式是追踪完整的调用链——从用户代码（GDScript/C#）出发，穿越脚本系统、Object 系统、ClassDB、Server 层，最终到达底层硬件。本章节选取六个典型场景，完整呈现"从用户代码到 CPU"的调用路径。
+'><meta property="og:url" content="https://quhongbin.github.io/godot/05-%E8%B0%83%E7%94%A8%E9%93%BE%E6%A1%88%E4%BE%8B/"><meta property="og:site_name" content="我的博客"><link rel=stylesheet href=/css/main.min.40ad2a9c00a93175c79e471a6792f23457c527e9c46cc8ee6e16d300f7bf6674.css integrity="sha256-QK0qnACpMXXHnkcaZ5LyNFfFJ+nEbMjubhbTAPe/ZnQ="><link rel=stylesheet href=/css/site-palettes.min.0f2ed388ed0b74ab72dcd2b144a6a19acbd23a4edca157c36eecdffad3dfe7bf.css integrity="sha256-Dy7TiO0LdKty3NKxRKahmsvSOk7coVfDbuzf+tPf578="><link rel=stylesheet href=/css/code-themes.min.78bd37b0419e6af001a97d6754f5264cacc1413c97b2e5d67033547083130a12.css integrity="sha256-eL03sEGeavABqX1nVPUmTKzBQTyXsuXWcDNUcIMTChI="><link rel=stylesheet href=https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css crossorigin=anonymous><style>:root{--content-width:1400px;--article-width:1100px;--toc-width:250px;--article-pad:clamp(25px, 6vw, 72px)}</style><link rel=icon href=/images/avatar.webp></head><body class=page-kind-page><a class=skip-link href=#main-content>跳到正文</a><div class=site-background aria-hidden=true></div><header class=site-header data-site-header><div class=header-inner><a class=site-brand href=/ aria-label=我的博客><img class=brand-avatar src=/images/avatar.webp alt width=44 height=44>
+<span class=brand-copy><strong>我的博客</strong>
+<small>在代码与生活之间</small>
+</span></a><button class=menu-toggle type=button aria-expanded=false aria-controls=site-navigation data-menu-toggle>
+<span class=menu-toggle-lines aria-hidden=true></span>
+<span class=sr-only>打开或关闭菜单</span></button><nav id=site-navigation class=site-navigation aria-label=主导航 data-navigation><ul class=nav-menu><li><a href=/>首页</a></li><li class="nav-item has-categories" data-categories-item><a href=/posts/ data-categories-trigger aria-haspopup=true>文章</a><ul class=categories-dropdown><li class=categories-all><a href=/posts/>全部文章</a></li><li><a href=/categories/godot/><span class=cat-name>Godot</span>
+<span class=term-count>8</span></a></li></ul></li><li><a href=/notes/>速记</a></li><li><a href=/tags/>标签</a></li><li><a href=/logs/>日志</a></li><li><a href=/about/>关于</a></li></ul><div class=header-social aria-label=社交链接><a href=https://github.com/your-name title=GitHub aria-label=GitHub target=_blank rel="noopener noreferrer"><svg class="icon icon-github" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 .7A11.5 11.5.0 008.36 23.11c.58.11.79-.25.79-.56v-2.23c-3.22.7-3.9-1.37-3.9-1.37-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.71.08-.71 1.17.08 1.78 1.2 1.78 1.2 1.04 1.78 2.72 1.27 3.38.97.1-.75.4-1.27.74-1.56-2.57-.29-5.27-1.28-5.27-5.68.0-1.25.45-2.28 1.19-3.08-.12-.29-.52-1.46.11-3.04.0.0.97-.31 3.16 1.18a10.98 10.98.0 015.76.0c2.19-1.49 3.15-1.18 3.15-1.18.63 1.58.23 2.75.11 3.04.74.8 1.19 1.83 1.19 3.08.0 4.41-2.71 5.38-5.29 5.67.42.36.79 1.07.79 2.16v3.2c0 .31.21.68.8.56A11.5 11.5.0 0012 .7z"/></svg>
+</a><a href=mailto:hello@example.com title=Email aria-label=Email><svg class="icon icon-email" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 4h18a2 2 0 012 2v12a2 2 0 01-2 2H3a2 2 0 01-2-2V6a2 2 0 012-2zm0 2 9 6 9-6H3zm18 12V8.4l-9 6-9-6V18h18z"/></svg></a></div><div class=theme-picker><button class=theme-toggle type=button data-theme-toggle aria-label="切换亮色 / 暗色主题" title="切换亮色 / 暗色主题">
+<svg class="icon icon-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><g stroke-linecap="round"><line x1="12" y1="2.5" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="21.5"/><line x1="2.5" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="21.5" y2="12"/><line x1="5.2" y1="5.2" x2="6.95" y2="6.95"/><line x1="17.05" y1="17.05" x2="18.8" y2="18.8"/><line x1="5.2" y1="18.8" x2="6.95" y2="17.05"/><line x1="17.05" y1="6.95" x2="18.8" y2="5.2"/></g></svg>
+<svg class="icon icon-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 019.5 4a.5.5.0 00-.78-.55 9.5 9.5.0 1011.83 11.83.5.5.0 00-.55-.78z"/></svg></button><div class=palette-menu role=group aria-label=主题配色><strong>主题配色</strong><div class=palette-group-label>亮色</div><button class=palette-option type=button data-palette-value=default data-palette-mode=light>站点默认 · 亮色</button>
+<button class=palette-option type=button data-palette-value=macos data-palette-mode=light>macOS · 亮色</button>
+<button class=palette-option type=button data-palette-value=github data-palette-mode=light>GitHub · 亮色</button>
+<button class=palette-option type=button data-palette-value=gruvbox data-palette-mode=light>Gruvbox · 亮色</button><div class=palette-group-label>暗色</div><button class=palette-option type=button data-palette-value=default data-palette-mode=dark>站点默认 · 暗色</button>
+<button class=palette-option type=button data-palette-value=macos data-palette-mode=dark>macOS · 暗色</button>
+<button class=palette-option type=button data-palette-value=github data-palette-mode=dark>GitHub · 暗色</button>
+<button class=palette-option type=button data-palette-value=gruvbox data-palette-mode=dark>Gruvbox · 暗色</button></div></div><details class=language-switcher><summary aria-label=选择语言><span aria-hidden=true>文/A</span>
+<span>简体中文</span></summary><ul><li><a href=/godot/05-%E8%B0%83%E7%94%A8%E9%93%BE%E6%A1%88%E4%BE%8B/ lang=zh-CN aria-current=true>简体中文</a></li></ul></details></nav></div></header><main id=main-content class=site-main><div class=article-layout><article class="article glass-panel reveal"><div class=reading-progress aria-hidden=true><span data-reading-progress></span></div><header class=article-header><a class=back-link href=/godot/>← 返回列表</a><h1>Godot Learning-5</h1><div class=article-meta><time datetime=2026-08-26>August 26, 2026</time>
+<span>阅读约 13 分钟</span>
+<span>6456 字</span></div></header><div class="prose article-content" data-article-content><h1 id=05---跨层调用链案例追踪>05 - 跨层调用链案例追踪</h1><blockquote><p><strong>源码版本</strong>：Godot 4.8.dev（master 分支，2026-08-26）
+<strong>证据等级</strong>：A（除非另行标注）</p></blockquote><hr><h2 id=概述>概述</h2><p>理解 Godot 源码的最佳方式是追踪完整的调用链——从用户代码（GDScript/C#）出发，穿越脚本系统、Object 系统、ClassDB、Server 层，最终到达底层硬件。本章节选取六个典型场景，完整呈现"从用户代码到 CPU"的调用路径。</p><p>这六个案例覆盖了 Godot 的核心运作机制：</p><ol><li><strong>引擎启动</strong>：从 main() 到第一帧渲染</li><li><strong>创建 Node</strong>：从 GDScript <code>Node.new()</code> 到 C++ 对象构造</li><li><strong>Signal 触发</strong>：从 <code>emit_signal</code> 到回调执行</li><li><strong>渲染提交</strong>：从 <code>Sprite2D</code> 变换到 GPU 绘制</li><li><strong>物理模拟</strong>：从 <code>CharacterBody2D</code> 移动到碰撞响应</li><li><strong>GDScript 调用 C++</strong>：从脚本方法调用到 MethodBind 执行</li></ol><p>每个案例都包含调用栈、关键代码、数据流图，帮助读者建立对引擎运作的整体认知。</p><hr><h2 id=案例一引擎启动到第一帧>案例一：引擎启动到第一帧</h2><h3 id=场景描述>场景描述</h3><p>用户运行 <code>godot</code> 可执行文件，引擎启动，加载主场景，渲染第一帧。</p><h3 id=调用栈>调用栈</h3><div class=highlight><pre tabindex=0 class=chroma><code class=language-gdscript3 data-lang=gdscript3><span class=line><span class=cl><span class=n>main</span><span class=p>(</span><span class=n>argc</span><span class=p>,</span> <span class=n>argv</span><span class=p>)</span>                                    <span class=p>[</span><span class=n>platform</span><span class=o>/</span><span class=n>windows</span><span class=o>/</span><span class=n>godot_windows</span><span class=o>.</span><span class=n>cpp</span><span class=p>]</span>
+</span></span><span class=line><span class=cl><span class=err>└──</span> <span class=n>widechar_main</span><span class=p>(</span><span class=n>argc</span><span class=p>,</span> <span class=n>argv</span><span class=p>)</span>
+</span></span><span class=line><span class=cl>    <span class=err>├──</span> <span class=n>Main</span><span class=p>::</span><span class=n>setup</span><span class=p>(</span><span class=n>execpath</span><span class=p>,</span> <span class=n>instance_id</span><span class=p>)</span>          <span class=p>[</span><span class=n>main</span><span class=o>/</span><span class=n>main</span><span class=o>.</span><span class=n>cpp</span><span class=p>:</span><span class=mi>3006</span><span class=p>]</span>
+</span></span><span class=line><span class=cl>    <span class=err>│</span>   <span class=err>├──</span> <span class=n>register_core_types</span><span class=p>()</span>                   <span class=p>[</span><span class=n>core</span><span class=o>/</span><span class=n>register_core_types</span><span class=o>.</span><span class=n>cpp</span><span class=p>:</span><span class=mi>135</span><span class=p>]</span>
+</span></span><span class=line><span class=cl>    <span class=err>│</span>   <span class=err>│</span>   <span class=err>├──</span> <span class=n>GDREGISTER_CLASS</span><span class=p>(</span><span class=ne>Object</span><span class=p>)</span>
+</span></span><span class=line><span class=cl>    <span class=err>│</span>   <span class=err>│</span>   <span class=err>├──</span> <span class=n>GDREGISTER_CLASS</span><span class=p>(</span><span class=n>RefCounted</span><span class=p>)</span>
+</span></span><span class=line><span class=cl>    <span class=err>│</span>   <span class=err>│</span>   <span class=err>├──</span> <span class=n>GDREGISTER_CLASS</span><span class=p>(</span><span class=ne>Resource</span><span class=p>)</span>
+</span></span><span class=line><span class=cl>    <span class=err>│</span>   <span class=err>│</span>   <span class=err>└──</span> <span class=o>...</span> <span class=p>(</span><span class=mi>100</span><span class=o>+</span> <span class=err>核心类</span><span class=p>)</span>
+</span></span><span class=line><span class=cl>    <span class=err>│</span>   <span class=err>├──</span> <span class=n>register_server_types</span><span class=p>()</span>                 <span class=p>[</span><span class=n>servers</span><span class=o>/</span><span class=n>register_server_types</span><span class=o>.</span><span class=n>cpp</span><span class=p>:</span><span class=mi>153</span><span class=p>]</span>
+</span></span><span class=line><span class=cl>    <span class=err>│</span>   <span class=err>│</span>   <span class=err>├──</span> <span class=n>GDREGISTER_ABSTRACT_CLASS</span><span class=p>(</span><span class=n>RenderingServer</span><span class=p>)</span>
+</span></span><span class=line><span class=cl>    <span class=err>│</span>   <span class=err>│</span>   <span class=err>├──</span> <span class=n>GDREGISTER_ABSTRACT_CLASS</span><span class=p>(</span><span class=n>PhysicsServer2D</span><span class=p>)</span>
+</span></span><span class=line><span class=cl>    <span class=err>│</span>   <span class=err>│</span>   <span class=err>└──</span> <span class=o>...</span>
+</span></span><span class=line><span class=cl>    <span class=err>│</span>   <span class=err>├──</span> <span class=n>register_scene_types</span><span class=p>()</span>                  <span class=p>[</span><span class=n>scene</span><span class=o>/</span><span class=n>register_scene_types</span><span class=o>.</span><span class=n>cpp</span><span class=p>:</span><span class=mi>395</span><span class=p>]</span>
+</span></span><span class=line><span class=cl>    <span class=err>│</span>   <span class=err>│</span>   <span class=err>├──</span> <span class=n>GDREGISTER_CLASS</span><span class=p>(</span><span class=ne>Node</span><span class=p>)</span>
+</span></span><span class=line><span class=cl>    <span class=err>│</span>   <span class=err>│</span>   <span class=err>├──</span> <span class=n>GDREGISTER_CLASS</span><span class=p>(</span><span class=ne>SceneTree</span><span class=p>)</span>
+</span></span><span class=line><span class=cl>    <span class=err>│</span>   <span class=err>│</span>   <span class=err>├──</span> <span class=n>GDREGISTER_CLASS</span><span class=p>(</span><span class=ne>CanvasItem</span><span class=p>)</span>
+</span></span><span class=line><span class=cl>    <span class=err>│</span>   <span class=err>│</span>   <span class=err>└──</span> <span class=o>...</span> <span class=p>(</span><span class=mi>500</span><span class=o>+</span> <span class=err>场景类</span><span class=p>)</span>
+</span></span><span class=line><span class=cl>    <span class=err>│</span>   <span class=err>├──</span> <span class=n>register_module_types</span><span class=p>()</span>                 <span class=p>[</span><span class=n>modules</span><span class=o>/</span><span class=n>register_module_types</span><span class=o>.</span><span class=n>cpp</span><span class=p>]</span>
+</span></span><span class=line><span class=cl>    <span class=err>│</span>   <span class=err>│</span>   <span class=err>└──</span> <span class=n>initialize_modules</span><span class=p>(</span><span class=n>LEVEL_CORE</span><span class=o>/</span><span class=n>SERVERS</span><span class=o>/</span><span class=n>SCENE</span><span class=o>/</span><span class=n>EDITOR</span><span class=p>)</span>
+</span></span><span class=line><span class=cl>    <span class=err>│</span>   <span class=err>├──</span> <span class=n>DisplayServer</span><span class=p>::</span><span class=n>create</span><span class=p>(</span><span class=o>...</span><span class=p>)</span>              <span class=p>[</span><span class=n>servers</span><span class=o>/</span><span class=n>display_server</span><span class=o>.</span><span class=n>cpp</span><span class=p>]</span>
+</span></span><span class=line><span class=cl>    <span class=err>│</span>   <span class=err>├──</span> <span class=n>RenderingServer</span><span class=p>::</span><span class=n>create</span><span class=p>()</span>               <span class=p>[</span><span class=n>servers</span><span class=o>/</span><span class=n>rendering</span><span class=o>/</span><span class=n>rendering_server</span><span class=o>.</span><span class=n>cpp</span><span class=p>]</span>
+</span></span><span class=line><span class=cl>    <span class=err>│</span>   <span class=err>│</span>   <span class=err>└──</span> <span class=n>memnew</span><span class=p>(</span><span class=n>RenderingServerDefault</span><span class=p>)</span>
+</span></span><span class=line><span class=cl>    <span class=err>│</span>   <span class=err>│</span>       <span class=err>└──</span> <span class=n>memnew</span><span class=p>(</span><span class=n>RenderingDeviceVulkan</span><span class=p>)</span>   <span class=p>[</span><span class=n>drivers</span><span class=o>/</span><span class=n>vulkan</span><span class=o>/</span><span class=p>]</span>
+</span></span><span class=line><span class=cl>    <span class=err>│</span>   <span class=err>├──</span> <span class=n>PhysicsServer2DManager</span><span class=p>::</span><span class=n>new_server</span><span class=p>()</span>    <span class=p>[</span><span class=n>servers</span><span class=o>/</span><span class=n>physics_2d</span><span class=o>/</span><span class=p>]</span>
+</span></span><span class=line><span class=cl>    <span class=err>│</span>   <span class=err>└──</span> <span class=ne>AudioServer</span><span class=p>::</span><span class=n>init</span><span class=p>()</span>                     <span class=p>[</span><span class=n>servers</span><span class=o>/</span><span class=n>audio_server</span><span class=o>.</span><span class=n>cpp</span><span class=p>]</span>
+</span></span><span class=line><span class=cl>    <span class=err>│</span>
+</span></span><span class=line><span class=cl>    <span class=err>├──</span> <span class=n>Main</span><span class=p>::</span><span class=n>start</span><span class=p>(</span><span class=n>instance_id</span><span class=p>)</span>                    <span class=p>[</span><span class=n>main</span><span class=o>/</span><span class=n>main</span><span class=o>.</span><span class=n>cpp</span><span class=p>:</span><span class=mi>3974</span><span class=p>]</span>
+</span></span><span class=line><span class=cl>    <span class=err>│</span>   <span class=err>├──</span> <span class=n>memnew</span><span class=p>(</span><span class=ne>SceneTree</span><span class=p>)</span>                       <span class=p>[</span><span class=n>scene</span><span class=o>/</span><span class=n>main</span><span class=o>/</span><span class=n>scene_tree</span><span class=o>.</span><span class=n>cpp</span><span class=p>]</span>
+</span></span><span class=line><span class=cl>    <span class=err>│</span>   <span class=err>│</span>   <span class=err>└──</span> <span class=n>memnew</span><span class=p>(</span><span class=n>Window</span><span class=p>)</span>  <span class=o>//</span> <span class=err>根窗口</span>
+</span></span><span class=line><span class=cl>    <span class=err>│</span>   <span class=err>├──</span> <span class=ne>OS</span><span class=p>::</span><span class=n>get_singleton</span><span class=p>()</span><span class=o>-&gt;</span><span class=n>set_main_loop</span><span class=p>(</span><span class=n>scene_tree</span><span class=p>)</span>
+</span></span><span class=line><span class=cl>    <span class=err>│</span>   <span class=err>└──</span> <span class=ne>ResourceLoader</span><span class=p>::</span><span class=nb>load</span><span class=p>(</span><span class=s2>&#34;res://main.tscn&#34;</span><span class=p>)</span>
+</span></span><span class=line><span class=cl>    <span class=err>│</span>       <span class=err>└──</span> <span class=ne>PackedScene</span><span class=p>::</span><span class=n>instantiate</span><span class=p>()</span>
+</span></span><span class=line><span class=cl>    <span class=err>│</span>           <span class=err>└──</span> <span class=n>scene_tree</span><span class=o>-&gt;</span><span class=n>add_child</span><span class=p>(</span><span class=n>instance</span><span class=p>)</span>
+</span></span><span class=line><span class=cl>    <span class=err>│</span>               <span class=err>└──</span> <span class=ne>Node</span><span class=p>::</span><span class=n>_propagate_enter_tree</span><span class=p>()</span>
+</span></span><span class=line><span class=cl>    <span class=err>│</span>                   <span class=err>├──</span> <span class=n>notification</span><span class=p>(</span><span class=n>NOTIFICATION_ENTER_TREE</span><span class=p>)</span>
+</span></span><span class=line><span class=cl>    <span class=err>│</span>                   <span class=err>└──</span> <span class=n>_propagate_ready</span><span class=p>()</span>
+</span></span><span class=line><span class=cl>    <span class=err>│</span>                       <span class=err>└──</span> <span class=n>notification</span><span class=p>(</span><span class=n>NOTIFICATION_READY</span><span class=p>)</span>
+</span></span><span class=line><span class=cl>    <span class=err>│</span>
+</span></span><span class=line><span class=cl>    <span class=err>└──</span> <span class=n>os</span><span class=o>-&gt;</span><span class=n>run</span><span class=p>()</span>                                   <span class=p>[</span><span class=n>platform</span><span class=o>/</span><span class=n>windows</span><span class=o>/</span><span class=n>os_windows</span><span class=o>.</span><span class=n>cpp</span><span class=p>:</span><span class=mi>2348</span><span class=p>]</span>
+</span></span><span class=line><span class=cl>        <span class=err>├──</span> <span class=n>main_loop</span><span class=o>-&gt;</span><span class=n>initialize</span><span class=p>()</span>                 <span class=o>//</span> <span class=ne>SceneTree</span><span class=p>::</span><span class=n>initialize</span><span class=p>()</span>
+</span></span><span class=line><span class=cl>        <span class=err>├──</span> <span class=k>while</span> <span class=p>(</span><span class=o>!</span><span class=n>exit</span><span class=p>):</span>
+</span></span><span class=line><span class=cl>        <span class=err>│</span>   <span class=err>└──</span> <span class=n>Main</span><span class=p>::</span><span class=n>iteration</span><span class=p>(</span><span class=n>frame_time</span><span class=p>)</span>         <span class=p>[</span><span class=n>main</span><span class=o>/</span><span class=n>main</span><span class=o>.</span><span class=n>cpp</span><span class=p>]</span>
+</span></span><span class=line><span class=cl>        <span class=err>│</span>       <span class=err>├──</span> <span class=n>PhysicsServer2D</span><span class=p>::</span><span class=n>step</span><span class=p>(</span><span class=n>delta</span><span class=p>)</span>
+</span></span><span class=line><span class=cl>        <span class=err>│</span>       <span class=err>├──</span> <span class=ne>SceneTree</span><span class=p>::</span><span class=n>process</span><span class=p>(</span><span class=n>time</span><span class=p>)</span>
+</span></span><span class=line><span class=cl>        <span class=err>│</span>       <span class=err>│</span>   <span class=err>├──</span> <span class=n>MessageQueue</span><span class=p>::</span><span class=n>flush</span><span class=p>()</span>
+</span></span><span class=line><span class=cl>        <span class=err>│</span>       <span class=err>│</span>   <span class=err>├──</span> <span class=n>_process</span><span class=p>(</span><span class=bp>false</span><span class=p>,</span> <span class=n>time</span><span class=p>)</span>
+</span></span><span class=line><span class=cl>        <span class=err>│</span>       <span class=err>│</span>   <span class=err>│</span>   <span class=err>└──</span> <span class=n>node</span><span class=o>-&gt;</span><span class=n>notification</span><span class=p>(</span><span class=n>NOTIFICATION_PROCESS</span><span class=p>)</span>
+</span></span><span class=line><span class=cl>        <span class=err>│</span>       <span class=err>│</span>   <span class=err>└──</span> <span class=n>_flush_nodes_to_ready</span><span class=p>()</span>
+</span></span><span class=line><span class=cl>        <span class=err>│</span>       <span class=err>├──</span> <span class=n>RenderingServer</span><span class=p>::</span><span class=n>draw</span><span class=p>()</span>
+</span></span><span class=line><span class=cl>        <span class=err>│</span>       <span class=err>│</span>   <span class=err>└──</span> <span class=n>RenderingMethod</span><span class=p>::</span><span class=n>render_scene</span><span class=p>()</span>
+</span></span><span class=line><span class=cl>        <span class=err>│</span>       <span class=err>│</span>       <span class=err>└──</span> <span class=n>RenderingDevice</span><span class=p>::</span><span class=n>submit</span><span class=p>()</span>
+</span></span><span class=line><span class=cl>        <span class=err>│</span>       <span class=err>└──</span> <span class=ne>AudioServer</span><span class=p>::</span><span class=n>update</span><span class=p>()</span>
+</span></span><span class=line><span class=cl>        <span class=err>└──</span> <span class=n>main_loop</span><span class=o>-&gt;</span><span class=n>finalize</span><span class=p>()</span>
+</span></span></code></pre></div><h3 id=数据流图>数据流图</h3><div class=highlight><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>┌─────────────┐     命令行参数      ┌──────────────┐
+</span></span><span class=line><span class=cl>| 操作系统     │ ──────────────────▶ | 平台入口点    │
+</span></span><span class=line><span class=cl>└─────────────┘                     └──────┬───────┘
+</span></span><span class=line><span class=cl>                                           │ 调用
+</span></span><span class=line><span class=cl>                                           ▼
+</span></span><span class=line><span class=cl>                                    ┌──────────────┐
+</span></span><span class=line><span class=cl>                                    | Main::setup  │
+</span></span><span class=line><span class=cl>                                    └──────┬───────┘
+</span></span><span class=line><span class=cl>                                           │ 注册类型
+</span></span><span class=line><span class=cl>                                           ▼
+</span></span><span class=line><span class=cl>                                    ┌──────────────┐
+</span></span><span class=line><span class=cl>                                    | ClassDB      │ ─── 600+ 类注册
+</span></span><span class=line><span class=cl>                                    └──────┬───────┘
+</span></span><span class=line><span class=cl>                                           │ 创建服务器
+</span></span><span class=line><span class=cl>                                           ▼
+</span></span><span class=line><span class=cl>                                    ┌──────────────┐
+</span></span><span class=line><span class=cl>                                    | Servers      │ ─── Rendering/Physics/Audio
+</span></span><span class=line><span class=cl>                                    └──────┬───────┘
+</span></span><span class=line><span class=cl>                                           │ 创建主循环
+</span></span><span class=line><span class=cl>                                           ▼
+</span></span><span class=line><span class=cl>                                    ┌──────────────┐
+</span></span><span class=line><span class=cl>                                    | SceneTree    │ ─── 加载主场景
+</span></span><span class=line><span class=cl>                                    └──────┬───────┘
+</span></span><span class=line><span class=cl>                                           │ 运行
+</span></span><span class=line><span class=cl>                                           ▼
+</span></span><span class=line><span class=cl>                                    ┌──────────────┐
+</span></span><span class=line><span class=cl>                                    | OS::run()    │ ─── 主循环
+</span></span><span class=line><span class=cl>                                    └──────────────┘
+</span></span></code></pre></div><h3 id=关键代码>关键代码</h3><h4 id=1-类型注册>1. 类型注册</h4><blockquote><p><strong>证据等级 A</strong>：基于 <code>core/register_core_types.cpp:135</code> 验证。</p></blockquote><div class=highlight><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=c1>// core/register_core_types.cpp:135
+</span></span></span><span class=line><span class=cl><span class=kt>void</span> <span class=nf>register_core_types</span><span class=p>()</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=c1>// 注册核心单例
+</span></span></span><span class=line><span class=cl>    <span class=n>GDREGISTER_CLASS</span><span class=p>(</span><span class=n>Object</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=n>GDREGISTER_CLASS</span><span class=p>(</span><span class=n>RefCounted</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=n>GDREGISTER_CLASS</span><span class=p>(</span><span class=n>Resource</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=c1>// ... 约 100+ 核心类
+</span></span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></div><h4 id=2-scenetree-创建>2. SceneTree 创建</h4><blockquote><p><strong>证据等级 A</strong>：基于 <code>scene/main/scene_tree.cpp</code> 验证。</p></blockquote><div class=highlight><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=c1>// scene/main/scene_tree.cpp（简化）
+</span></span></span><span class=line><span class=cl><span class=n>SceneTree</span><span class=o>::</span><span class=n>SceneTree</span><span class=p>()</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=n>root</span> <span class=o>=</span> <span class=n>memnew</span><span class=p>(</span><span class=n>Window</span><span class=p>);</span>  <span class=c1>// 创建根窗口
+</span></span></span><span class=line><span class=cl>    <span class=n>root</span><span class=o>-&gt;</span><span class=n>set_name</span><span class=p>(</span><span class=s>&#34;root&#34;</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=n>root</span><span class=o>-&gt;</span><span class=n>set_tree</span><span class=p>(</span><span class=k>this</span><span class=p>);</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></div><h4 id=3-主循环>3. 主循环</h4><blockquote><p><strong>证据等级 A</strong>：基于 <code>platform/windows/os_windows.cpp:2348</code> 验证。</p></blockquote><div class=highlight><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=c1>// platform/windows/os_windows.cpp:2348（简化）
+</span></span></span><span class=line><span class=cl><span class=kt>void</span> <span class=n>OS_Windows</span><span class=o>::</span><span class=n>run</span><span class=p>()</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=n>MainLoop</span> <span class=o>*</span><span class=n>main_loop</span> <span class=o>=</span> <span class=n>get_main_loop</span><span class=p>();</span>
+</span></span><span class=line><span class=cl>    <span class=n>main_loop</span><span class=o>-&gt;</span><span class=n>initialize</span><span class=p>();</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=kt>bool</span> <span class=n>exit</span> <span class=o>=</span> <span class=nb>false</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=k>while</span> <span class=p>(</span><span class=o>!</span><span class=n>exit</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=n>DisplayServer</span><span class=o>::</span><span class=n>get_singleton</span><span class=p>()</span><span class=o>-&gt;</span><span class=n>process_events</span><span class=p>();</span>
+</span></span><span class=line><span class=cl>        <span class=kt>double</span> <span class=n>frame_time</span> <span class=o>=</span> <span class=p>...;</span>
+</span></span><span class=line><span class=cl>        <span class=n>exit</span> <span class=o>=</span> <span class=n>Main</span><span class=o>::</span><span class=n>iteration</span><span class=p>(</span><span class=n>frame_time</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=p>}</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=n>main_loop</span><span class=o>-&gt;</span><span class=n>finalize</span><span class=p>();</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></div><h3 id=时序图>时序图</h3><div class=highlight><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>sequenceDiagram
+</span></span><span class=line><span class=cl>    participant OS as 操作系统
+</span></span><span class=line><span class=cl>    participant PE as 平台入口
+</span></span><span class=line><span class=cl>    participant Main as Main
+</span></span><span class=line><span class=cl>    participant CD as ClassDB
+</span></span><span class=line><span class=cl>    participant Srv as Servers
+</span></span><span class=line><span class=cl>    participant ST as SceneTree
+</span></span><span class=line><span class=cl>    participant RD as RenderingDevice
+</span></span><span class=line><span class=cl>    participant GPU as GPU
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    OS-&gt;&gt;PE: main()
+</span></span><span class=line><span class=cl>    PE-&gt;&gt;Main: setup()
+</span></span><span class=line><span class=cl>    Main-&gt;&gt;CD: register_core_types()
+</span></span><span class=line><span class=cl>    Main-&gt;&gt;CD: register_server_types()
+</span></span><span class=line><span class=cl>    Main-&gt;&gt;CD: register_scene_types()
+</span></span><span class=line><span class=cl>    Main-&gt;&gt;CD: register_module_types()
+</span></span><span class=line><span class=cl>    Main-&gt;&gt;Srv: 创建 DisplayServer
+</span></span><span class=line><span class=cl>    Main-&gt;&gt;Srv: 创建 RenderingServer
+</span></span><span class=line><span class=cl>    Main-&gt;&gt;Srv: 创建 PhysicsServer
+</span></span><span class=line><span class=cl>    Main-&gt;&gt;Srv: 创建 AudioServer
+</span></span><span class=line><span class=cl>    Main--&gt;&gt;PE: setup OK
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    PE-&gt;&gt;Main: start()
+</span></span><span class=line><span class=cl>    Main-&gt;&gt;ST: memnew(SceneTree)
+</span></span><span class=line><span class=cl>    Main-&gt;&gt;ST: 加载主场景
+</span></span><span class=line><span class=cl>    ST-&gt;&gt;ST: add_child(instance)
+</span></span><span class=line><span class=cl>    ST-&gt;&gt;ST: _propagate_enter_tree()
+</span></span><span class=line><span class=cl>    ST-&gt;&gt;ST: _propagate_ready()
+</span></span><span class=line><span class=cl>    Main--&gt;&gt;PE: start OK
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    PE-&gt;&gt;PE: os-&gt;run()
+</span></span><span class=line><span class=cl>    PE-&gt;&gt;ST: initialize()
+</span></span><span class=line><span class=cl>    loop 每帧
+</span></span><span class=line><span class=cl>        PE-&gt;&gt;Main: iteration()
+</span></span><span class=line><span class=cl>        Main-&gt;&gt;Srv: PhysicsServer::step()
+</span></span><span class=line><span class=cl>        Main-&gt;&gt;ST: process()
+</span></span><span class=line><span class=cl>        Main-&gt;&gt;Srv: RenderingServer::draw()
+</span></span><span class=line><span class=cl>        Srv-&gt;&gt;RD: submit()
+</span></span><span class=line><span class=cl>        RD-&gt;&gt;GPU: 渲染命令
+</span></span><span class=line><span class=cl>    end
+</span></span><span class=line><span class=cl>    PE-&gt;&gt;ST: finalize()
+</span></span></code></pre></div><hr><h2 id=案例二创建-node>案例二：创建 Node</h2><h3 id=场景描述-1>场景描述</h3><p>GDScript 代码 <code>var node = Node.new()</code> 创建一个新节点。</p><h3 id=调用栈-1>调用栈</h3><div class=highlight><pre tabindex=0 class=chroma><code class=language-gdscript3 data-lang=gdscript3><span class=line><span class=cl><span class=ne>GDScript</span><span class=p>:</span> <span class=k>var</span> <span class=n>node</span> <span class=o>=</span> <span class=ne>Node</span><span class=o>.</span><span class=n>new</span><span class=p>()</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>
+</span></span><span class=line><span class=cl><span class=err>▼</span>
+</span></span><span class=line><span class=cl><span class=n>GDScriptLanguage</span><span class=p>::</span><span class=n>call_method</span><span class=p>()</span>                     <span class=p>[</span><span class=n>modules</span><span class=o>/</span><span class=n>gdscript</span><span class=o>/</span><span class=p>]</span>
+</span></span><span class=line><span class=cl><span class=err>└──</span> <span class=n>GDScriptFunction</span><span class=p>::</span><span class=n>call</span><span class=p>()</span>
+</span></span><span class=line><span class=cl>    <span class=err>└──</span> <span class=err>解析</span> <span class=s2>&#34;Node&#34;</span> <span class=err>与</span> <span class=s2>&#34;new&#34;</span>
+</span></span><span class=line><span class=cl>        <span class=err>└──</span> <span class=n>ClassDB</span><span class=p>::</span><span class=n>instantiate</span><span class=p>(</span><span class=s2>&#34;Node&#34;</span><span class=p>)</span>            <span class=p>[</span><span class=n>core</span><span class=o>/</span><span class=n>object</span><span class=o>/</span><span class=n>class_db</span><span class=o>.</span><span class=n>cpp</span><span class=p>]</span>
+</span></span><span class=line><span class=cl>            <span class=err>└──</span> <span class=n>ClassInfo</span><span class=p>::</span><span class=n>creation_func</span><span class=p>()</span>
+</span></span><span class=line><span class=cl>                <span class=err>└──</span> <span class=ne>Node</span><span class=p>::</span><span class=n>create</span><span class=p>()</span>                  <span class=o>//</span> <span class=n>GDCLASS</span> <span class=err>宏生成</span>
+</span></span><span class=line><span class=cl>                    <span class=err>└──</span> <span class=n>memnew</span><span class=p>(</span><span class=ne>Node</span><span class=p>)</span>                <span class=p>[</span><span class=n>core</span><span class=o>/</span><span class=n>os</span><span class=o>/</span><span class=n>memory</span><span class=o>.</span><span class=n>h</span><span class=p>]</span>
+</span></span><span class=line><span class=cl>                        <span class=err>├──</span> <span class=n>malloc</span><span class=p>(</span><span class=n>sizeof</span><span class=p>(</span><span class=ne>Node</span><span class=p>))</span>
+</span></span><span class=line><span class=cl>                        <span class=err>├──</span> <span class=ne>Node</span><span class=p>::</span><span class=ne>Node</span><span class=p>()</span>            <span class=o>//</span> <span class=err>构造函数</span>
+</span></span><span class=line><span class=cl>                        <span class=err>│</span>   <span class=err>└──</span> <span class=ne>Object</span><span class=p>::</span><span class=ne>Object</span><span class=p>()</span>
+</span></span><span class=line><span class=cl>                        <span class=err>└──</span> <span class=ne>Object</span><span class=p>::</span><span class=n>_postinitialize</span><span class=p>()</span> <span class=p>[</span><span class=n>core</span><span class=o>/</span><span class=n>object</span><span class=o>/</span><span class=n>object</span><span class=o>.</span><span class=n>cpp</span><span class=p>:</span><span class=mi>191</span><span class=p>]</span>
+</span></span><span class=line><span class=cl>                            <span class=err>└──</span> <span class=n>notification</span><span class=p>(</span><span class=n>NOTIFICATION_POSTINITIALIZE</span><span class=p>)</span>
+</span></span><span class=line><span class=cl>                                <span class=err>└──</span> <span class=n>_notification_forward</span><span class=p>(</span><span class=n>NOTIFICATION_POSTINITIALIZE</span><span class=p>)</span>
+</span></span><span class=line><span class=cl>                                    <span class=err>└──</span> <span class=ne>Node</span><span class=p>::</span><span class=n>_notification</span><span class=p>()</span> <span class=o>//</span> <span class=err>若重写</span>
+</span></span></code></pre></div><h3 id=数据流图-1>数据流图</h3><div class=highlight><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>GDScript 字节码
+</span></span><span class=line><span class=cl>    │
+</span></span><span class=line><span class=cl>    │ &#34;Node.new()&#34;
+</span></span><span class=line><span class=cl>    ▼
+</span></span><span class=line><span class=cl>GDScript VM
+</span></span><span class=line><span class=cl>    │
+</span></span><span class=line><span class=cl>    │ 查找类 &#34;Node&#34;
+</span></span><span class=line><span class=cl>    ▼
+</span></span><span class=line><span class=cl>ClassDB::classes[&#34;Node&#34;]
+</span></span><span class=line><span class=cl>    │
+</span></span><span class=line><span class=cl>    │ 获取 creation_func
+</span></span><span class=line><span class=cl>    ▼
+</span></span><span class=line><span class=cl>Node::create()  (GDCLASS 宏生成)
+</span></span><span class=line><span class=cl>    │
+</span></span><span class=line><span class=cl>    │ memnew
+</span></span><span class=line><span class=cl>    ▼
+</span></span><span class=line><span class=cl>内存分配 + 构造
+</span></span><span class=line><span class=cl>    │
+</span></span><span class=line><span class=cl>    │ _postinitialize
+</span></span><span class=line><span class=cl>    ▼
+</span></span><span class=line><span class=cl>NOTIFICATION_POSTINITIALIZE
+</span></span><span class=line><span class=cl>    │
+</span></span><span class=line><span class=cl>    ▼
+</span></span><span class=line><span class=cl>返回 Object* 给 GDScript
+</span></span><span class=line><span class=cl>    │
+</span></span><span class=line><span class=cl>    │ 包装为 Variant
+</span></span><span class=line><span class=cl>    ▼
+</span></span><span class=line><span class=cl>GDScript 变量 node
+</span></span></code></pre></div><h3 id=关键代码-1>关键代码</h3><h4 id=1-classdbinstantiate>1. ClassDB::instantiate</h4><blockquote><p><strong>证据等级 A</strong>：基于 <code>core/object/class_db.cpp</code> 验证。</p></blockquote><div class=highlight><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=c1>// core/object/class_db.cpp（简化）
+</span></span></span><span class=line><span class=cl><span class=n>Object</span> <span class=o>*</span><span class=n>ClassDB</span><span class=o>::</span><span class=n>instantiate</span><span class=p>(</span><span class=k>const</span> <span class=n>StringName</span> <span class=o>&amp;</span><span class=n>p_class</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=n>ClassInfo</span> <span class=o>*</span><span class=n>info</span> <span class=o>=</span> <span class=n>classes</span><span class=p>.</span><span class=n>getptr</span><span class=p>(</span><span class=n>p_class</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=n>ERR_FAIL_NULL_V</span><span class=p>(</span><span class=n>info</span><span class=p>,</span> <span class=k>nullptr</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=n>ERR_FAIL_COND_V_MSG</span><span class=p>(</span><span class=n>info</span><span class=o>-&gt;</span><span class=n>creation_func</span> <span class=o>==</span> <span class=k>nullptr</span><span class=p>,</span> <span class=k>nullptr</span><span class=p>,</span> <span class=s>&#34;Class cannot be instantiated.&#34;</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=k>return</span> <span class=n>info</span><span class=o>-&gt;</span><span class=n>creation_func</span><span class=p>();</span> <span class=c1>// 调用 GDCLASS 生成的工厂函数
+</span></span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></div><h4 id=2-gdclass-宏生成的-create>2. GDCLASS 宏生成的 create()</h4><blockquote><p><strong>证据等级 A</strong>：基于 <code>core/object/object.h:245-294</code> 验证。</p></blockquote><div class=highlight><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=c1>// GDCLASS(Node, Object) 展开后（简化）
+</span></span></span><span class=line><span class=cl><span class=k>static</span> <span class=n>Object</span> <span class=o>*</span><span class=nf>create</span><span class=p>()</span> <span class=p>{</span> <span class=k>return</span> <span class=n>memnew</span><span class=p>(</span><span class=n>Node</span><span class=p>);</span> <span class=p>}</span>
+</span></span></code></pre></div><h4 id=3-_postinitialize>3. _postinitialize</h4><blockquote><p><strong>证据等级 A</strong>：基于 <code>core/object/object.cpp:191</code> 验证。</p></blockquote><div class=highlight><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=c1>// core/object/object.cpp:191
+</span></span></span><span class=line><span class=cl><span class=kt>void</span> <span class=n>Object</span><span class=o>::</span><span class=n>_postinitialize</span><span class=p>()</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=n>notification</span><span class=p>(</span><span class=n>NOTIFICATION_POSTINITIALIZE</span><span class=p>);</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></div><h3 id=关键点>关键点</h3><ul><li><strong>GDCLASS 宏</strong>：为每个类生成 <code>create()</code> 工厂函数，注册到 ClassDB</li><li><strong>memnew</strong>：Godot 的 new，分配内存并调用构造函数，然后调用 <code>_postinitialize</code></li><li><strong>POSTINITIALIZE 通知</strong>：此时虚函数表已就绪，可安全调用虚函数</li><li><strong>Variant 包装</strong>：Object* 通过 Variant 的 ObjData 返回给脚本</li></ul><hr><h2 id=案例三signal-触发>案例三：Signal 触发</h2><h3 id=场景描述-2>场景描述</h3><p>GDScript 代码 <code>button.emit("pressed")</code> 触发按钮的 pressed 信号，连接的回调被调用。</p><h3 id=调用栈-2>调用栈</h3><div class=highlight><pre tabindex=0 class=chroma><code class=language-gdscript3 data-lang=gdscript3><span class=line><span class=cl><span class=ne>GDScript</span><span class=p>:</span> <span class=n>button</span><span class=o>.</span><span class=n>emit</span><span class=p>(</span><span class=s2>&#34;pressed&#34;</span><span class=p>)</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>
+</span></span><span class=line><span class=cl><span class=err>▼</span>
+</span></span><span class=line><span class=cl><span class=n>GDScriptFunction</span><span class=p>::</span><span class=n>call</span><span class=p>()</span>
+</span></span><span class=line><span class=cl><span class=err>└──</span> <span class=ne>Object</span><span class=p>::</span><span class=n>callp</span><span class=p>(</span><span class=s2>&#34;emit_signal&#34;</span><span class=p>,</span> <span class=p>[</span><span class=s2>&#34;pressed&#34;</span><span class=p>])</span>      <span class=p>[</span><span class=n>core</span><span class=o>/</span><span class=n>object</span><span class=o>/</span><span class=n>object</span><span class=o>.</span><span class=n>cpp</span><span class=p>]</span>
+</span></span><span class=line><span class=cl>    <span class=err>└──</span> <span class=n>ClassDB</span><span class=p>::</span><span class=n>get_method</span><span class=p>(</span><span class=s2>&#34;Object&#34;</span><span class=p>,</span> <span class=s2>&#34;emit_signal&#34;</span><span class=p>)</span>
+</span></span><span class=line><span class=cl>        <span class=err>└──</span> <span class=n>MethodBind</span><span class=p>::</span><span class=n>call</span><span class=p>(</span><span class=n>this</span><span class=p>,</span> <span class=p>[</span><span class=s2>&#34;pressed&#34;</span><span class=p>])</span>
+</span></span><span class=line><span class=cl>            <span class=err>└──</span> <span class=ne>Object</span><span class=p>::</span><span class=n>emit_signal</span><span class=p>(</span><span class=s2>&#34;pressed&#34;</span><span class=p>)</span>     <span class=o>//</span> <span class=err>实际方法</span>
+</span></span><span class=line><span class=cl>                <span class=err>└──</span> <span class=ne>Object</span><span class=p>::</span><span class=n>emit_signalp</span><span class=p>(</span><span class=s2>&#34;pressed&#34;</span><span class=p>,</span> <span class=n>nullptr</span><span class=p>,</span> <span class=mi>0</span><span class=p>)</span> <span class=p>[</span><span class=n>core</span><span class=o>/</span><span class=n>object</span><span class=o>/</span><span class=n>object</span><span class=o>.</span><span class=n>cpp</span><span class=p>:</span><span class=mi>1256</span><span class=p>]</span>
+</span></span><span class=line><span class=cl>                    <span class=err>├──</span> <span class=err>检查</span> <span class=n>_block_signals</span>
+</span></span><span class=line><span class=cl>                    <span class=err>├──</span> <span class=err>查找</span> <span class=n>signal_map</span><span class=p>[</span><span class=s2>&#34;pressed&#34;</span><span class=p>]</span>
+</span></span><span class=line><span class=cl>                    <span class=err>├──</span> <span class=n>ObjectSignalLock</span> <span class=n>lock</span><span class=p>(</span><span class=n>this</span><span class=p>)</span>  <span class=o>//</span> <span class=err>加锁</span>
+</span></span><span class=line><span class=cl>                    <span class=err>├──</span> <span class=err>复制</span> <span class=n>slot</span> <span class=err>列表到栈（≤</span><span class=mi>5</span><span class=err>）或堆</span>
+</span></span><span class=line><span class=cl>                    <span class=err>├──</span> <span class=n>lock</span><span class=o>.</span><span class=n>release</span><span class=p>()</span>               <span class=o>//</span> <span class=err>解锁</span>
+</span></span><span class=line><span class=cl>                    <span class=err>└──</span> <span class=err>遍历</span> <span class=n>callables</span><span class=p>:</span>
+</span></span><span class=line><span class=cl>                        <span class=err>├──</span> <span class=k>if</span> <span class=n>CONNECT_DEFERRED</span><span class=p>:</span>
+</span></span><span class=line><span class=cl>                        <span class=err>│</span>   <span class=err>└──</span> <span class=n>MessageQueue</span><span class=p>::</span><span class=n>push_call</span><span class=p>(</span><span class=n>callable</span><span class=p>)</span>
+</span></span><span class=line><span class=cl>                        <span class=err>│</span>       <span class=err>└──</span> <span class=err>（帧末执行）</span>
+</span></span><span class=line><span class=cl>                        <span class=err>│</span>           <span class=err>└──</span> <span class=n>callable</span><span class=o>.</span><span class=n>callp</span><span class=p>()</span>
+</span></span><span class=line><span class=cl>                        <span class=err>│</span>               <span class=err>└──</span> <span class=ne>Object</span><span class=p>::</span><span class=n>callp</span><span class=p>(</span><span class=n>method_name</span><span class=p>,</span> <span class=n>args</span><span class=p>)</span>
+</span></span><span class=line><span class=cl>                        <span class=err>│</span>                   <span class=err>└──</span> <span class=n>ClassDB</span><span class=p>::</span><span class=n>get_method</span><span class=p>(</span><span class=o>...</span><span class=p>)</span>
+</span></span><span class=line><span class=cl>                        <span class=err>│</span>                       <span class=err>└──</span> <span class=n>MethodBind</span><span class=p>::</span><span class=n>call</span><span class=p>()</span>
+</span></span><span class=line><span class=cl>                        <span class=err>│</span>                           <span class=err>└──</span> <span class=err>实际</span> <span class=n>C</span><span class=o>++</span> <span class=err>方法</span>
+</span></span><span class=line><span class=cl>                        <span class=err>└──</span> <span class=k>else</span> <span class=p>(</span><span class=err>立即调用</span><span class=p>):</span>
+</span></span><span class=line><span class=cl>                            <span class=err>└──</span> <span class=n>callable</span><span class=o>.</span><span class=n>callp</span><span class=p>(</span><span class=n>nullptr</span><span class=p>,</span> <span class=mi>0</span><span class=p>)</span>
+</span></span><span class=line><span class=cl>                                <span class=err>└──</span> <span class=n>CallableCustom</span><span class=p>::</span><span class=n>call</span><span class=p>()</span>  <span class=o>//</span> <span class=err>若是</span> <span class=n>lambda</span>
+</span></span><span class=line><span class=cl>                                <span class=err>或</span> <span class=ne>Object</span><span class=p>::</span><span class=n>callp</span><span class=p>(</span><span class=n>method_name</span><span class=p>)</span>  <span class=o>//</span> <span class=err>若是对象方法</span>
+</span></span><span class=line><span class=cl>                                    <span class=err>└──</span> <span class=n>ClassDB</span><span class=p>::</span><span class=n>get_method</span><span class=p>(</span><span class=o>...</span><span class=p>)</span>
+</span></span><span class=line><span class=cl>                                        <span class=err>└──</span> <span class=n>MethodBind</span><span class=p>::</span><span class=n>call</span><span class=p>()</span>
+</span></span><span class=line><span class=cl>                                            <span class=err>└──</span> <span class=err>实际</span> <span class=n>C</span><span class=o>++</span> <span class=err>方法</span>
+</span></span></code></pre></div><h3 id=数据流图-2>数据流图</h3><div class=highlight><pre tabindex=0 class=chroma><code class=language-gdscript3 data-lang=gdscript3><span class=line><span class=cl><span class=err>┌──────────────┐</span>
+</span></span><span class=line><span class=cl><span class=err>│</span> <span class=ne>GDScript</span>     <span class=err>│</span> <span class=n>button</span><span class=o>.</span><span class=n>emit</span><span class=p>(</span><span class=s2>&#34;pressed&#34;</span><span class=p>)</span>
+</span></span><span class=line><span class=cl><span class=err>└──────┬───────┘</span>
+</span></span><span class=line><span class=cl>       <span class=err>│</span> <span class=n>callp</span><span class=p>(</span><span class=s2>&#34;emit_signal&#34;</span><span class=p>,</span> <span class=p>[</span><span class=s2>&#34;pressed&#34;</span><span class=p>])</span>
+</span></span><span class=line><span class=cl>       <span class=err>▼</span>
+</span></span><span class=line><span class=cl><span class=err>┌──────────────┐</span>
+</span></span><span class=line><span class=cl><span class=err>│</span> <span class=ne>Object</span>       <span class=err>│</span>
+</span></span><span class=line><span class=cl><span class=err>│</span> <span class=n>callp</span><span class=p>()</span>      <span class=err>│</span>
+</span></span><span class=line><span class=cl><span class=err>└──────┬───────┘</span>
+</span></span><span class=line><span class=cl>       <span class=err>│</span> <span class=n>ClassDB</span> <span class=err>查找</span>
+</span></span><span class=line><span class=cl>       <span class=err>▼</span>
+</span></span><span class=line><span class=cl><span class=err>┌──────────────┐</span>
+</span></span><span class=line><span class=cl><span class=err>│</span> <span class=n>MethodBind</span>   <span class=err>│</span>
+</span></span><span class=line><span class=cl><span class=err>│</span> <span class=n>call</span><span class=p>()</span>       <span class=err>│</span>
+</span></span><span class=line><span class=cl><span class=err>└──────┬───────┘</span>
+</span></span><span class=line><span class=cl>       <span class=err>│</span> <span class=err>调用实际方法</span>
+</span></span><span class=line><span class=cl>       <span class=err>▼</span>
+</span></span><span class=line><span class=cl><span class=err>┌──────────────┐</span>
+</span></span><span class=line><span class=cl><span class=err>│</span> <span class=ne>Object</span>       <span class=err>│</span>
+</span></span><span class=line><span class=cl><span class=err>│</span> <span class=n>emit_signalp</span> <span class=err>│</span>
+</span></span><span class=line><span class=cl><span class=err>└──────┬───────┘</span>
+</span></span><span class=line><span class=cl>       <span class=err>│</span> <span class=err>查找</span> <span class=n>signal_map</span>
+</span></span><span class=line><span class=cl>       <span class=err>▼</span>
+</span></span><span class=line><span class=cl><span class=err>┌──────────────┐</span>
+</span></span><span class=line><span class=cl><span class=err>│</span> <span class=n>SignalData</span>   <span class=err>│</span>
+</span></span><span class=line><span class=cl><span class=err>│</span> <span class=n>slot_map</span>     <span class=err>│</span> <span class=err>───</span> <span class=p>[</span><span class=n>Callable1</span><span class=p>,</span> <span class=n>Callable2</span><span class=p>,</span> <span class=o>...</span><span class=p>]</span>
+</span></span><span class=line><span class=cl><span class=err>└──────┬───────┘</span>
+</span></span><span class=line><span class=cl>       <span class=err>│</span> <span class=err>遍历调用</span>
+</span></span><span class=line><span class=cl>       <span class=err>▼</span>
+</span></span><span class=line><span class=cl><span class=err>┌──────────────┐</span>
+</span></span><span class=line><span class=cl><span class=err>│</span> <span class=n>Callable</span>     <span class=err>│</span>
+</span></span><span class=line><span class=cl><span class=err>│</span> <span class=n>callp</span><span class=p>()</span>      <span class=err>│</span>
+</span></span><span class=line><span class=cl><span class=err>└──────┬───────┘</span>
+</span></span><span class=line><span class=cl>       <span class=err>│</span>
+</span></span><span class=line><span class=cl>       <span class=err>├──</span> <span class=err>立即调用</span> <span class=err>→</span> <span class=ne>Object</span><span class=p>::</span><span class=n>callp</span> <span class=err>→</span> <span class=n>MethodBind</span> <span class=err>→</span> <span class=n>C</span><span class=o>++</span> <span class=err>方法</span>
+</span></span><span class=line><span class=cl>       <span class=err>│</span>
+</span></span><span class=line><span class=cl>       <span class=err>└──</span> <span class=n>DEFERRED</span> <span class=err>→</span> <span class=n>MessageQueue</span> <span class=err>→</span> <span class=err>帧末执行</span>
+</span></span></code></pre></div><h3 id=关键代码-2>关键代码</h3><h4 id=1-emit_signalp-的栈优化>1. emit_signalp 的栈优化</h4><blockquote><p><strong>证据等级 A</strong>：基于 <code>core/object/object.cpp:1256</code> 验证。</p></blockquote><div class=highlight><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=c1>// core/object/object.cpp:1256（简化）
+</span></span></span><span class=line><span class=cl><span class=kt>void</span> <span class=n>Object</span><span class=o>::</span><span class=n>emit_signalp</span><span class=p>(</span><span class=k>const</span> <span class=n>StringName</span> <span class=o>&amp;</span><span class=n>p_name</span><span class=p>,</span> <span class=k>const</span> <span class=n>Variant</span> <span class=o>**</span><span class=n>p_args</span><span class=p>,</span> <span class=kt>int</span> <span class=n>p_argcount</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=k>if</span> <span class=p>(</span><span class=n>_block_signals</span><span class=p>)</span> <span class=k>return</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=n>SignalData</span> <span class=o>*</span><span class=n>s</span> <span class=o>=</span> <span class=n>signal_map</span><span class=p>.</span><span class=n>getptr</span><span class=p>(</span><span class=n>p_name</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=k>if</span> <span class=p>(</span><span class=o>!</span><span class=n>s</span> <span class=o>||</span> <span class=n>s</span><span class=o>-&gt;</span><span class=n>slot_map</span><span class=p>.</span><span class=n>is_empty</span><span class=p>())</span> <span class=k>return</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=c1>// 栈分配优化：≤5 个连接用栈数组
+</span></span></span><span class=line><span class=cl>    <span class=k>constexpr</span> <span class=kt>int</span> <span class=n>MAX_SLOTS_ON_STACK</span> <span class=o>=</span> <span class=mi>5</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=k>alignas</span><span class=p>(</span><span class=n>Callable</span><span class=p>)</span> <span class=kt>uint8_t</span> <span class=n>slot_callable_stack</span><span class=p>[</span><span class=k>sizeof</span><span class=p>(</span><span class=n>Callable</span><span class=p>)</span> <span class=o>*</span> <span class=n>MAX_SLOTS_ON_STACK</span><span class=p>];</span>
+</span></span><span class=line><span class=cl>    <span class=kt>uint32_t</span> <span class=n>slot_flags_stack</span><span class=p>[</span><span class=n>MAX_SLOTS_ON_STACK</span><span class=p>];</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=kt>int</span> <span class=n>slot_count</span> <span class=o>=</span> <span class=n>s</span><span class=o>-&gt;</span><span class=n>slot_map</span><span class=p>.</span><span class=n>size</span><span class=p>();</span>
+</span></span><span class=line><span class=cl>    <span class=n>Callable</span> <span class=o>*</span><span class=n>callables</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=kt>uint32_t</span> <span class=o>*</span><span class=n>flags</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=k>if</span> <span class=p>(</span><span class=n>slot_count</span> <span class=o>&lt;=</span> <span class=n>MAX_SLOTS_ON_STACK</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=n>callables</span> <span class=o>=</span> <span class=p>(</span><span class=n>Callable</span> <span class=o>*</span><span class=p>)</span><span class=n>slot_callable_stack</span><span class=p>;</span>  <span class=c1>// 栈分配
+</span></span></span><span class=line><span class=cl>        <span class=n>flags</span> <span class=o>=</span> <span class=n>slot_flags_stack</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=p>}</span> <span class=k>else</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=n>callables</span> <span class=o>=</span> <span class=p>(</span><span class=n>Callable</span> <span class=o>*</span><span class=p>)</span><span class=n>memalloc</span><span class=p>(</span><span class=k>sizeof</span><span class=p>(</span><span class=n>Callable</span><span class=p>)</span> <span class=o>*</span> <span class=n>slot_count</span><span class=p>);</span>  <span class=c1>// 堆分配
+</span></span></span><span class=line><span class=cl>        <span class=n>flags</span> <span class=o>=</span> <span class=p>(</span><span class=kt>uint32_t</span> <span class=o>*</span><span class=p>)</span><span class=n>memalloc</span><span class=p>(</span><span class=k>sizeof</span><span class=p>(</span><span class=kt>uint32_t</span><span class=p>)</span> <span class=o>*</span> <span class=n>slot_count</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=p>}</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=c1>// 复制 slot 数据（加锁）
+</span></span></span><span class=line><span class=cl>    <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=n>ObjectSignalLock</span> <span class=nf>lock</span><span class=p>(</span><span class=k>this</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>        <span class=kt>int</span> <span class=n>idx</span> <span class=o>=</span> <span class=mi>0</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>        <span class=k>for</span> <span class=p>(</span><span class=k>const</span> <span class=n>KeyValue</span><span class=o>&lt;</span><span class=n>Callable</span><span class=p>,</span> <span class=n>Slot</span><span class=o>&gt;</span> <span class=o>&amp;</span><span class=nl>kv</span> <span class=p>:</span> <span class=n>s</span><span class=o>-&gt;</span><span class=n>slot_map</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>            <span class=n>memnew_placement</span><span class=p>(</span><span class=o>&amp;</span><span class=n>callables</span><span class=p>[</span><span class=n>idx</span><span class=p>],</span> <span class=n>Callable</span><span class=p>(</span><span class=n>kv</span><span class=p>.</span><span class=n>key</span><span class=p>));</span>
+</span></span><span class=line><span class=cl>            <span class=n>flags</span><span class=p>[</span><span class=n>idx</span><span class=p>]</span> <span class=o>=</span> <span class=n>kv</span><span class=p>.</span><span class=n>value</span><span class=p>.</span><span class=n>conn</span><span class=p>.</span><span class=n>flags</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>            <span class=n>idx</span><span class=o>++</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>        <span class=p>}</span>
+</span></span><span class=line><span class=cl>    <span class=p>}</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=c1>// 遍历调用（已解锁）
+</span></span></span><span class=line><span class=cl>    <span class=k>for</span> <span class=p>(</span><span class=kt>int</span> <span class=n>i</span> <span class=o>=</span> <span class=mi>0</span><span class=p>;</span> <span class=n>i</span> <span class=o>&lt;</span> <span class=n>slot_count</span><span class=p>;</span> <span class=n>i</span><span class=o>++</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=k>if</span> <span class=p>(</span><span class=n>flags</span><span class=p>[</span><span class=n>i</span><span class=p>]</span> <span class=o>&amp;</span> <span class=n>CONNECT_DEFERRED</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>            <span class=n>MessageQueue</span><span class=o>::</span><span class=n>get_singleton</span><span class=p>()</span><span class=o>-&gt;</span><span class=n>push_call</span><span class=p>(</span><span class=n>callables</span><span class=p>[</span><span class=n>i</span><span class=p>],</span> <span class=n>p_args</span><span class=p>,</span> <span class=n>p_argcount</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>        <span class=p>}</span> <span class=k>else</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>            <span class=n>Callable</span><span class=o>::</span><span class=n>CallError</span> <span class=n>ce</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>            <span class=n>callables</span><span class=p>[</span><span class=n>i</span><span class=p>].</span><span class=n>callp</span><span class=p>(</span><span class=n>p_args</span><span class=p>,</span> <span class=n>p_argcount</span><span class=p>,</span> <span class=n>ce</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>        <span class=p>}</span>
+</span></span><span class=line><span class=cl>    <span class=p>}</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=c1>// 清理
+</span></span></span><span class=line><span class=cl>    <span class=k>for</span> <span class=p>(</span><span class=kt>int</span> <span class=n>i</span> <span class=o>=</span> <span class=mi>0</span><span class=p>;</span> <span class=n>i</span> <span class=o>&lt;</span> <span class=n>slot_count</span><span class=p>;</span> <span class=n>i</span><span class=o>++</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=n>callables</span><span class=p>[</span><span class=n>i</span><span class=p>].</span><span class=o>~</span><span class=n>Callable</span><span class=p>();</span>
+</span></span><span class=line><span class=cl>    <span class=p>}</span>
+</span></span><span class=line><span class=cl>    <span class=k>if</span> <span class=p>(</span><span class=n>slot_count</span> <span class=o>&gt;</span> <span class=n>MAX_SLOTS_ON_STACK</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=n>memfree</span><span class=p>(</span><span class=n>callables</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>        <span class=n>memfree</span><span class=p>(</span><span class=n>flags</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=p>}</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></div><h3 id=关键点-1>关键点</h3><ul><li><strong>栈分配优化</strong>：≤5 个连接避免堆分配，提升性能</li><li><strong>复制后调用</strong>：先复制 slot 列表再解锁，避免迭代中修改</li><li><strong>DEFERRED 延迟</strong>：通过 MessageQueue 在帧末执行</li><li><strong>Callable 多态</strong>：Callable 可以是对象方法、Lambda、绑定参数</li></ul><hr><h2 id=案例四渲染提交>案例四：渲染提交</h2><h3 id=场景描述-3>场景描述</h3><p>GDScript 代码 <code>sprite.position = Vector2(100, 100)</code> 修改精灵位置，最终 GPU 绘制该精灵。</p><h3 id=调用栈-3>调用栈</h3><div class=highlight><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>GDScript: sprite.position = Vector2(100, 100)
+</span></span><span class=line><span class=cl>│
+</span></span><span class=line><span class=cl>▼
+</span></span><span class=line><span class=cl>GDScriptFunction::call()
+</span></span><span class=line><span class=cl>└── Object::callp(&#34;set_position&#34;, [Vector2(100, 100)])
+</span></span><span class=line><span class=cl>    └── ClassDB::get_method(&#34;Node2D&#34;, &#34;set_position&#34;)
+</span></span><span class=line><span class=cl>        └── MethodBind::call(sprite, [Vector2(100, 100)])
+</span></span><span class=line><span class=cl>            └── Node2D::set_position(Vector2(100, 100))  [scene/2d/node_2d.cpp]
+</span></span><span class=line><span class=cl>                └── CanvasItem::set_transform(Transform2D(...))
+</span></span><span class=line><span class=cl>                    └── RenderingServer::canvas_item_set_transform(ci, transform)
+</span></span><span class=line><span class=cl>                        │   [servers/rendering/rendering_server.cpp]
+</span></span><span class=line><span class=cl>                        ├── canvas_item_owner.get_or_null(ci) → CanvasItem*
+</span></span><span class=line><span class=cl>                        └── ci-&gt;transform = transform  // 更新内部数据
+</span></span><span class=line><span class=cl>                        （此时未渲染，仅更新数据）
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl># --- 帧末渲染 ---
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>Main::iteration()
+</span></span><span class=line><span class=cl>└── RenderingServer::draw()
+</span></span><span class=line><span class=cl>    └── RenderingServerDefault::draw()
+</span></span><span class=line><span class=cl>        ├── 更新场景图（_instance_dependency_queue）
+</span></span><span class=line><span class=cl>        └── RenderingMethod::render_scene(viewport, ...)
+</span></span><span class=line><span class=cl>            └── RendererCanvasRenderRD::render_canvas(canvas, ...)
+</span></span><span class=line><span class=cl>                ├── 遍历 canvas 的 items
+</span></span><span class=line><span class=cl>                ├── 对每个 CanvasItem：
+</span></span><span class=line><span class=cl>                │   ├── 收集绘制命令（rect、texture_rect 等）
+</span></span><span class=line><span class=cl>                │   └── 生成顶点数据
+</span></span><span class=line><span class=cl>                ├── 批处理（合批优化）
+</span></span><span class=line><span class=cl>                └── RenderingDevice::draw_list_begin() / draw_list_bind_render_pipeline() / draw_list_bind_vertex_array() / draw_list_draw()
+</span></span><span class=line><span class=cl>                    └── RenderingDeviceVulkan::draw_list_draw()
+</span></span><span class=line><span class=cl>                        └── vkCmdDraw()  // Vulkan API 调用
+</span></span><span class=line><span class=cl>                            └── GPU 执行绘制命令
+</span></span></code></pre></div><h3 id=数据流图-3>数据流图</h3><div class=highlight><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>┌──────────────┐
+</span></span><span class=line><span class=cl>│ GDScript     │ sprite.position = Vector2(100, 100)
+</span></span><span class=line><span class=cl>└──────┬───────┘
+</span></span><span class=line><span class=cl>       │ set_position
+</span></span><span class=line><span class=cl>       ▼
+</span></span><span class=line><span class=cl>┌──────────────┐
+</span></span><span class=line><span class=cl>│ Node2D       │
+</span></span><span class=line><span class=cl>│ set_position │
+</span></span><span class=line><span class=cl>└──────┬───────┘
+</span></span><span class=line><span class=cl>       │ 持有 RID ci
+</span></span><span class=line><span class=cl>       ▼
+</span></span><span class=line><span class=cl>┌──────────────┐
+</span></span><span class=line><span class=cl>│RenderingServer│
+</span></span><span class=line><span class=cl>│canvas_item_  │
+</span></span><span class=line><span class=cl>│set_transform │
+</span></span><span class=line><span class=cl>└──────┬───────┘
+</span></span><span class=line><span class=cl>       │ RID → CanvasItem*
+</span></span><span class=line><span class=cl>       ▼
+</span></span><span class=line><span class=cl>┌──────────────┐
+</span></span><span class=line><span class=cl>│ CanvasItem   │
+</span></span><span class=line><span class=cl>│ (内部对象)    │
+</span></span><span class=line><span class=cl>│ transform =  │
+</span></span><span class=line><span class=cl>│  新变换       │
+</span></span><span class=line><span class=cl>└──────────────┘
+</span></span><span class=line><span class=cl>       │
+</span></span><span class=line><span class=cl>       │ （帧末）
+</span></span><span class=line><span class=cl>       ▼
+</span></span><span class=line><span class=cl>┌──────────────┐
+</span></span><span class=line><span class=cl>│RenderingMethod│
+</span></span><span class=line><span class=cl>│ render_scene │
+</span></span><span class=line><span class=cl>└──────┬───────┘
+</span></span><span class=line><span class=cl>       │
+</span></span><span class=line><span class=cl>       ▼
+</span></span><span class=line><span class=cl>┌──────────────┐
+</span></span><span class=line><span class=cl>│CanvasRenderRD│
+</span></span><span class=line><span class=cl>│render_canvas │
+</span></span><span class=line><span class=cl>└──────┬───────┘
+</span></span><span class=line><span class=cl>       │ 生成顶点
+</span></span><span class=line><span class=cl>       ▼
+</span></span><span class=line><span class=cl>┌──────────────┐
+</span></span><span class=line><span class=cl>│RenderingDevice│
+</span></span><span class=line><span class=cl>│ draw_list    │
+</span></span><span class=line><span class=cl>└──────┬───────┘
+</span></span><span class=line><span class=cl>       │ Vulkan 命令
+</span></span><span class=line><span class=cl>       ▼
+</span></span><span class=line><span class=cl>┌──────────────┐
+</span></span><span class=line><span class=cl>│ GPU          │ 绘制
+</span></span><span class=line><span class=cl>└──────────────┘
+</span></span></code></pre></div><h3 id=关键代码-3>关键代码</h3><h4 id=1-node2dset_position>1. Node2D::set_position</h4><blockquote><p><strong>证据等级 A</strong>：基于 <code>scene/2d/node_2d.cpp</code> 验证。</p></blockquote><div class=highlight><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=c1>// scene/2d/node_2d.cpp（简化）
+</span></span></span><span class=line><span class=cl><span class=kt>void</span> <span class=n>Node2D</span><span class=o>::</span><span class=n>set_position</span><span class=p>(</span><span class=k>const</span> <span class=n>Point2</span> <span class=o>&amp;</span><span class=n>p_pos</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=n>transform</span><span class=p>.</span><span class=n>elements</span><span class=p>[</span><span class=mi>2</span><span class=p>]</span> <span class=o>=</span> <span class=n>p_pos</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=n>_update_transform</span><span class=p>();</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=kt>void</span> <span class=n>CanvasItem</span><span class=o>::</span><span class=n>_update_transform</span><span class=p>()</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=c1>// 通过 RenderingServer 更新内部 CanvasItem 的变换
+</span></span></span><span class=line><span class=cl>    <span class=n>RenderingServer</span><span class=o>::</span><span class=n>get_singleton</span><span class=p>()</span><span class=o>-&gt;</span><span class=n>canvas_item_set_transform</span><span class=p>(</span><span class=n>canvas_item</span><span class=p>,</span> <span class=n>get_global_transform</span><span class=p>());</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></div><h4 id=2-renderingservercanvas_item_set_transform>2. RenderingServer::canvas_item_set_transform</h4><blockquote><p><strong>证据等级 A</strong>：基于 <code>servers/rendering/rendering_server.cpp</code> 验证。</p></blockquote><div class=highlight><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=c1>// servers/rendering/rendering_server.cpp（简化）
+</span></span></span><span class=line><span class=cl><span class=kt>void</span> <span class=n>RenderingServer</span><span class=o>::</span><span class=n>canvas_item_set_transform</span><span class=p>(</span><span class=n>RID</span> <span class=n>p_item</span><span class=p>,</span> <span class=k>const</span> <span class=n>Transform2D</span> <span class=o>&amp;</span><span class=n>p_transform</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=n>CanvasItem</span> <span class=o>*</span><span class=n>ci</span> <span class=o>=</span> <span class=n>canvas_item_owner</span><span class=p>.</span><span class=n>get_or_null</span><span class=p>(</span><span class=n>p_item</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=n>ERR_FAIL_NULL</span><span class=p>(</span><span class=n>ci</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=n>ci</span><span class=o>-&gt;</span><span class=n>transform</span> <span class=o>=</span> <span class=n>p_transform</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></div><h3 id=关键点-2>关键点</h3><ul><li><strong>数据与渲染分离</strong>：<code>set_position</code> 仅更新内部数据，不立即渲染</li><li><strong>RID 跨层引用</strong>：Node2D 持有 RID，通过 RenderingServer 操作内部对象</li><li><strong>帧末批量渲染</strong>：所有变换更新累积，帧末一次性渲染</li><li><strong>Vulkan 命令</strong>：最终通过 vkCmdDraw 提交到 GPU</li></ul><hr><h2 id=案例五物理模拟>案例五：物理模拟</h2><h3 id=场景描述-4>场景描述</h3><p>GDScript 代码 <code>velocity = Vector2(100, 0)</code> 设置速度，物理引擎每帧更新位置并检测碰撞。</p><h3 id=调用栈-4>调用栈</h3><div class=highlight><pre tabindex=0 class=chroma><code class=language-gdscript3 data-lang=gdscript3><span class=line><span class=cl><span class=ne>GDScript</span><span class=p>:</span> <span class=n>velocity</span> <span class=o>=</span> <span class=ne>Vector2</span><span class=p>(</span><span class=mi>100</span><span class=p>,</span> <span class=mi>0</span><span class=p>)</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>
+</span></span><span class=line><span class=cl><span class=err>▼</span>
+</span></span><span class=line><span class=cl><span class=err>（</span><span class=n>CharacterBody2D</span> <span class=err>的</span> <span class=n>_physics_process</span> <span class=err>中）</span>
+</span></span><span class=line><span class=cl><span class=n>CharacterBody2D</span><span class=p>::</span><span class=n>move_and_slide</span><span class=p>()</span>                    <span class=p>[</span><span class=n>scene</span><span class=o>/</span><span class=mi>2</span><span class=n>d</span><span class=o>/</span><span class=n>physics_body_2d</span><span class=o>.</span><span class=n>cpp</span><span class=p>]</span>
+</span></span><span class=line><span class=cl><span class=err>└──</span> <span class=n>PhysicsServer2D</span><span class=p>::</span><span class=n>body_test_motion</span><span class=p>(</span><span class=n>body</span><span class=p>,</span> <span class=o>...</span><span class=p>)</span>
+</span></span><span class=line><span class=cl>    <span class=err>│</span>   <span class=err>（若使用</span> <span class=n>WrapMT</span><span class=err>，进入物理线程）</span>
+</span></span><span class=line><span class=cl>    <span class=err>└──</span> <span class=n>GodotPhysicsServer2D</span><span class=p>::</span><span class=n>body_test_motion</span><span class=p>()</span>
+</span></span><span class=line><span class=cl>        <span class=err>└──</span> <span class=n>Body2D</span><span class=p>::</span><span class=n>test_motion</span><span class=p>(</span><span class=o>...</span><span class=p>)</span>
+</span></span><span class=line><span class=cl>            <span class=err>├──</span> <span class=err>应用速度：</span><span class=n>position</span> <span class=o>+=</span> <span class=n>velocity</span> <span class=o>*</span> <span class=n>delta</span>
+</span></span><span class=line><span class=cl>            <span class=err>├──</span> <span class=n>Broadphase</span><span class=err>：检测</span> <span class=ne>AABB</span> <span class=err>重叠</span>
+</span></span><span class=line><span class=cl>            <span class=err>│</span>   <span class=err>└──</span> <span class=n>BroadPhase2D</span><span class=p>::</span><span class=n>cull_aabb</span><span class=p>()</span>
+</span></span><span class=line><span class=cl>            <span class=err>├──</span> <span class=n>Narrowphase</span><span class=err>：精确碰撞检测</span>
+</span></span><span class=line><span class=cl>            <span class=err>│</span>   <span class=err>└──</span> <span class=n>Body2D</span><span class=p>::</span><span class=n>collide_with</span><span class=p>(</span><span class=n>other_body</span><span class=p>)</span>
+</span></span><span class=line><span class=cl>            <span class=err>│</span>       <span class=err>└──</span> <span class=err>形状对特定算法（</span><span class=n>circle</span><span class=o>-</span><span class=n>circle</span><span class=p>,</span> <span class=n>rect</span><span class=o>-</span><span class=n>rect</span> <span class=err>等）</span>
+</span></span><span class=line><span class=cl>            <span class=err>├──</span> <span class=n>Solver</span><span class=err>：约束求解</span>
+</span></span><span class=line><span class=cl>            <span class=err>│</span>   <span class=err>└──</span> <span class=err>接触约束求解（分离、反弹）</span>
+</span></span><span class=line><span class=cl>            <span class=err>└──</span> <span class=err>更新最终位置</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=c1># --- 物理步进 ---</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=n>Main</span><span class=p>::</span><span class=n>iteration</span><span class=p>()</span>
+</span></span><span class=line><span class=cl><span class=err>└──</span> <span class=n>PhysicsServer2D</span><span class=p>::</span><span class=n>step</span><span class=p>(</span><span class=n>delta</span><span class=p>)</span>
+</span></span><span class=line><span class=cl>    <span class=err>└──</span> <span class=err>（</span><span class=n>WrapMT</span><span class=p>:</span> <span class=n>command_queue</span><span class=o>.</span><span class=n>wait_and_flush</span><span class=p>()</span><span class=err>）</span>
+</span></span><span class=line><span class=cl>        <span class=err>└──</span> <span class=n>GodotPhysicsServer2D</span><span class=p>::</span><span class=n>step</span><span class=p>(</span><span class=n>delta</span><span class=p>)</span>
+</span></span><span class=line><span class=cl>            <span class=err>├──</span> <span class=err>对每个</span> <span class=n>Space2D</span><span class=err>：</span>
+</span></span><span class=line><span class=cl>            <span class=err>│</span>   <span class=err>├──</span> <span class=n>broadphase</span><span class=err>：更新碰撞对</span>
+</span></span><span class=line><span class=cl>            <span class=err>│</span>   <span class=err>├──</span> <span class=n>narrowphase</span><span class=err>：精检测</span>
+</span></span><span class=line><span class=cl>            <span class=err>│</span>   <span class=err>├──</span> <span class=n>solver</span><span class=err>：约束求解</span>
+</span></span><span class=line><span class=cl>            <span class=err>│</span>   <span class=err>└──</span> <span class=n>integrate</span><span class=err>：积分（更新位置</span><span class=o>/</span><span class=err>速度）</span>
+</span></span><span class=line><span class=cl>            <span class=err>└──</span> <span class=n>flush_queries</span><span class=p>()</span>
+</span></span><span class=line><span class=cl>                <span class=err>└──</span> <span class=err>触发</span> <span class=n>area_entered</span><span class=o>/</span><span class=n>body_entered</span> <span class=err>信号</span>
+</span></span><span class=line><span class=cl>                    <span class=err>└──</span> <span class=ne>Object</span><span class=p>::</span><span class=n>emit_signal</span><span class=p>(</span><span class=s2>&#34;body_entered&#34;</span><span class=p>,</span> <span class=n>other_body</span><span class=p>)</span>
+</span></span><span class=line><span class=cl>                        <span class=err>└──</span> <span class=err>（调用连接的</span> <span class=n>Callable</span><span class=err>）</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=c1># --- 场景物理处理 ---</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=ne>SceneTree</span><span class=p>::</span><span class=n>physics_process</span><span class=p>(</span><span class=n>delta</span><span class=p>)</span>
+</span></span><span class=line><span class=cl><span class=err>└──</span> <span class=n>node</span><span class=o>-&gt;</span><span class=n>notification</span><span class=p>(</span><span class=n>NOTIFICATION_PHYSICS_PROCESS</span><span class=p>)</span>
+</span></span><span class=line><span class=cl>    <span class=err>└──</span> <span class=n>CharacterBody2D</span><span class=p>::</span><span class=n>_physics_process</span><span class=p>(</span><span class=n>delta</span><span class=p>)</span>
+</span></span><span class=line><span class=cl>        <span class=err>└──</span> <span class=err>（</span><span class=ne>GDScript</span> <span class=err>的</span> <span class=n>_physics_process</span><span class=err>）</span>
+</span></span><span class=line><span class=cl>            <span class=err>└──</span> <span class=n>velocity</span> <span class=o>=</span> <span class=ne>Vector2</span><span class=p>(</span><span class=mi>100</span><span class=p>,</span> <span class=mi>0</span><span class=p>)</span>
+</span></span><span class=line><span class=cl>            <span class=err>└──</span> <span class=n>move_and_slide</span><span class=p>()</span>
+</span></span></code></pre></div><h3 id=数据流图-4>数据流图</h3><div class=highlight><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>┌──────────────┐
+</span></span><span class=line><span class=cl>│ GDScript     │ velocity = Vector2(100, 0)
+</span></span><span class=line><span class=cl>│ _physics_    │
+</span></span><span class=line><span class=cl>│ process()    │
+</span></span><span class=line><span class=cl>└──────┬───────┘
+</span></span><span class=line><span class=cl>       │ move_and_slide
+</span></span><span class=line><span class=cl>       ▼
+</span></span><span class=line><span class=cl>┌──────────────┐
+</span></span><span class=line><span class=cl>│CharacterBody2D│
+</span></span><span class=line><span class=cl>└──────┬───────┘
+</span></span><span class=line><span class=cl>       │ 持有 RID body
+</span></span><span class=line><span class=cl>       ▼
+</span></span><span class=line><span class=cl>┌──────────────┐
+</span></span><span class=line><span class=cl>│PhysicsServer2D│
+</span></span><span class=line><span class=cl>│ body_test_   │
+</span></span><span class=line><span class=cl>│ motion       │
+</span></span><span class=line><span class=cl>└──────┬───────┘
+</span></span><span class=line><span class=cl>       │ WrapMT 命令队列
+</span></span><span class=line><span class=cl>       ▼
+</span></span><span class=line><span class=cl>┌──────────────┐
+</span></span><span class=line><span class=cl>│ 物理线程      │
+</span></span><span class=line><span class=cl>│ GodotPhysics │
+</span></span><span class=line><span class=cl>│ Server2D     │
+</span></span><span class=line><span class=cl>│ ::step()     │
+</span></span><span class=line><span class=cl>└──────┬───────┘
+</span></span><span class=line><span class=cl>       │
+</span></span><span class=line><span class=cl>       ├── Broadphase（AABB 重叠）
+</span></span><span class=line><span class=cl>       ├── Narrowphase（形状碰撞）
+</span></span><span class=line><span class=cl>       ├── Solver（约束求解）
+</span></span><span class=line><span class=cl>       └── Integrate（位置更新）
+</span></span><span class=line><span class=cl>              │
+</span></span><span class=line><span class=cl>              ▼
+</span></span><span class=line><span class=cl>       ┌──────────────┐
+</span></span><span class=line><span class=cl>       │ Body2D       │
+</span></span><span class=line><span class=cl>       │ position =   │
+</span></span><span class=line><span class=cl>       │  新位置       │
+</span></span><span class=line><span class=cl>       └──────┬───────┘
+</span></span><span class=line><span class=cl>              │
+</span></span><span class=line><span class=cl>              ▼
+</span></span><span class=line><span class=cl>       ┌──────────────┐
+</span></span><span class=line><span class=cl>       │ flush_queries│
+</span></span><span class=line><span class=cl>       │ 触发信号      │
+</span></span><span class=line><span class=cl>       └──────────────┘
+</span></span></code></pre></div><h3 id=关键点-3>关键点</h3><ul><li><strong>WrapMT 多线程</strong>：物理模拟在独立线程，通过命令队列同步</li><li><strong>body_test_motion</strong>：CharacterBody2D 的核心，测试移动并处理碰撞</li><li><strong>三阶段碰撞</strong>：Broadphase（粗）→ Narrowphase（精）→ Solver（解）</li><li><strong>信号触发</strong>：碰撞结果通过信号通知上层</li></ul><hr><h2 id=案例六gdscript-调用-c-方法>案例六：GDScript 调用 C++ 方法</h2><h3 id=场景描述-5>场景描述</h3><p>GDScript 代码 <code>node.add_child(child_node)</code> 调用 C++ 的 <code>Node::add_child</code> 方法。</p><h3 id=调用栈-5>调用栈</h3><div class=highlight><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>GDScript: node.add_child(child_node)
+</span></span><span class=line><span class=cl>│
+</span></span><span class=line><span class=cl>▼
+</span></span><span class=line><span class=cl>GDScriptFunction::call()                            [modules/gdscript/]
+</span></span><span class=line><span class=cl>└── 解析方法名 &#34;add_child&#34; 与参数 [child_node]
+</span></span><span class=line><span class=cl>    └── Object::callp(&#34;add_child&#34;, [child_node])    [core/object/object.cpp]
+</span></span><span class=line><span class=cl>        ├── 1. 检查 script_instance
+</span></span><span class=line><span class=cl>        │   └── script_instance-&gt;callp(&#34;add_child&#34;, ...)
+</span></span><span class=line><span class=cl>        │       └── 若脚本定义了 add_child，调用脚本版本
+</span></span><span class=line><span class=cl>        │       └── 否则返回 CALL_ERROR_INVALID_METHOD，继续
+</span></span><span class=line><span class=cl>        │
+</span></span><span class=line><span class=cl>        ├── 2. 检查 extension
+</span></span><span class=line><span class=cl>        │   └── 若是 GDExtension 对象，调用扩展方法
+</span></span><span class=line><span class=cl>        │
+</span></span><span class=line><span class=cl>        └── 3. 查找 ClassDB 绑定的方法
+</span></span><span class=line><span class=cl>            └── ClassDB::get_method(&#34;Node&#34;, &#34;add_child&#34;)
+</span></span><span class=line><span class=cl>                │   [core/object/class_db.cpp]
+</span></span><span class=line><span class=cl>                ├── 在 Node 的 method_map 查找
+</span></span><span class=line><span class=cl>                ├── 若未找到，沿继承链查找（Node → Object）
+</span></span><span class=line><span class=cl>                └── 返回 MethodBind*
+</span></span><span class=line><span class=cl>            └── MethodBind::call(node, [child_node])
+</span></span><span class=line><span class=cl>                │   [core/object/method_bind.h]
+</span></span><span class=line><span class=cl>                ├── 参数转换：Variant → Node*（child_node）
+</span></span><span class=line><span class=cl>                │   └── Variant::operator Node*()
+</span></span><span class=line><span class=cl>                │       └── 检查类型，返回 Object*
+</span></span><span class=line><span class=cl>                ├── 调用实际方法：
+</span></span><span class=line><span class=cl>                │   ((Node*)obj)-&gt;add_child((Node*)arg0)
+</span></span><span class=line><span class=cl>                └── 返回值转回 Variant
+</span></span><span class=line><span class=cl>                    └── Node::add_child(child_node)  [scene/main/node.cpp]
+</span></span><span class=line><span class=cl>                        ├── ERR_FAIL_NULL(child)
+</span></span><span class=line><span class=cl>                        ├── ERR_FAIL_COND(child-&gt;parent)
+</span></span><span class=line><span class=cl>                        ├── child-&gt;parent = this
+</span></span><span class=line><span class=cl>                        ├── children.push_back(child)
+</span></span><span class=line><span class=cl>                        ├── child-&gt;notification(NOTIFICATION_PARENTED)
+</span></span><span class=line><span class=cl>                        └── if (inside_tree):
+</span></span><span class=line><span class=cl>                            └── child-&gt;_propagate_enter_tree()
+</span></span><span class=line><span class=cl>                                ├── child-&gt;tree = this-&gt;tree
+</span></span><span class=line><span class=cl>                                ├── child-&gt;notification(NOTIFICATION_ENTER_TREE)
+</span></span><span class=line><span class=cl>                                └── _propagate_ready()
+</span></span><span class=line><span class=cl>                                    └── child-&gt;notification(NOTIFICATION_READY)
+</span></span></code></pre></div><h3 id=数据流图-5>数据流图</h3><div class=highlight><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>┌──────────────┐
+</span></span><span class=line><span class=cl>│ GDScript     │ node.add_child(child)
+</span></span><span class=line><span class=cl>│ 字节码       │
+</span></span><span class=line><span class=cl>└──────┬───────┘
+</span></span><span class=line><span class=cl>       │
+</span></span><span class=line><span class=cl>       ▼
+</span></span><span class=line><span class=cl>┌──────────────┐
+</span></span><span class=line><span class=cl>│ GDScript VM  │
+</span></span><span class=line><span class=cl>│ call_method  │
+</span></span><span class=line><span class=cl>└──────┬───────┘
+</span></span><span class=line><span class=cl>       │
+</span></span><span class=line><span class=cl>       ▼
+</span></span><span class=line><span class=cl>┌──────────────┐
+</span></span><span class=line><span class=cl>│ Object       │
+</span></span><span class=line><span class=cl>│ callp()      │
+</span></span><span class=line><span class=cl>└──────┬───────┘
+</span></span><span class=line><span class=cl>       │
+</span></span><span class=line><span class=cl>       ├── 1. script_instance? → 脚本方法
+</span></span><span class=line><span class=cl>       │
+</span></span><span class=line><span class=cl>       ├── 2. extension? → 扩展方法
+</span></span><span class=line><span class=cl>       │
+</span></span><span class=line><span class=cl>       └── 3. ClassDB 查找
+</span></span><span class=line><span class=cl>               │
+</span></span><span class=line><span class=cl>               ▼
+</span></span><span class=line><span class=cl>       ┌──────────────┐
+</span></span><span class=line><span class=cl>       │ ClassDB      │
+</span></span><span class=line><span class=cl>       │ get_method() │
+</span></span><span class=line><span class=cl>       │ 沿继承链查找  │
+</span></span><span class=line><span class=cl>       └──────┬───────┘
+</span></span><span class=line><span class=cl>              │
+</span></span><span class=line><span class=cl>              ▼
+</span></span><span class=line><span class=cl>       ┌──────────────┐
+</span></span><span class=line><span class=cl>       │ MethodBind   │
+</span></span><span class=line><span class=cl>       │ call()       │
+</span></span><span class=line><span class=cl>       │ Variant→C++  │
+</span></span><span class=line><span class=cl>       └──────┬───────┘
+</span></span><span class=line><span class=cl>              │
+</span></span><span class=line><span class=cl>              ▼
+</span></span><span class=line><span class=cl>       ┌──────────────┐
+</span></span><span class=line><span class=cl>       │ Node         │
+</span></span><span class=line><span class=cl>       │ add_child()  │
+</span></span><span class=line><span class=cl>       │ 实际 C++ 方法│
+</span></span><span class=line><span class=cl>       └──────────────┘
+</span></span></code></pre></div><h3 id=关键代码-4>关键代码</h3><h4 id=1-objectcallp-的查找优先级>1. Object::callp 的查找优先级</h4><blockquote><p><strong>证据等级 A</strong>：基于 <code>core/object/object.cpp</code> 验证。</p></blockquote><div class=highlight><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=c1>// core/object/object.cpp（简化）
+</span></span></span><span class=line><span class=cl><span class=n>Variant</span> <span class=n>Object</span><span class=o>::</span><span class=n>callp</span><span class=p>(</span><span class=k>const</span> <span class=n>StringName</span> <span class=o>&amp;</span><span class=n>p_method</span><span class=p>,</span> <span class=k>const</span> <span class=n>Variant</span> <span class=o>**</span><span class=n>p_args</span><span class=p>,</span> <span class=kt>int</span> <span class=n>p_argcount</span><span class=p>,</span> <span class=n>Callable</span><span class=o>::</span><span class=n>CallError</span> <span class=o>&amp;</span><span class=n>r_error</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=c1>// 1. 脚本实例优先
+</span></span></span><span class=line><span class=cl>    <span class=k>if</span> <span class=p>(</span><span class=n>script_instance</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=n>Variant</span> <span class=n>ret</span> <span class=o>=</span> <span class=n>script_instance</span><span class=o>-&gt;</span><span class=n>callp</span><span class=p>(</span><span class=n>p_method</span><span class=p>,</span> <span class=n>p_args</span><span class=p>,</span> <span class=n>p_argcount</span><span class=p>,</span> <span class=n>r_error</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>        <span class=k>if</span> <span class=p>(</span><span class=n>r_error</span><span class=p>.</span><span class=n>error</span> <span class=o>!=</span> <span class=n>Callable</span><span class=o>::</span><span class=n>CallError</span><span class=o>::</span><span class=n>CALL_ERROR_INVALID_METHOD</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>            <span class=k>return</span> <span class=n>ret</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>        <span class=p>}</span>
+</span></span><span class=line><span class=cl>    <span class=p>}</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=c1>// 2. GDExtension
+</span></span></span><span class=line><span class=cl>    <span class=k>if</span> <span class=p>(</span><span class=n>extension</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=c1>// ... 调用扩展方法
+</span></span></span><span class=line><span class=cl>    <span class=p>}</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=c1>// 3. ClassDB 绑定方法
+</span></span></span><span class=line><span class=cl>    <span class=n>MethodBind</span> <span class=o>*</span><span class=n>method</span> <span class=o>=</span> <span class=n>ClassDB</span><span class=o>::</span><span class=n>get_method</span><span class=p>(</span><span class=n>get_class_name</span><span class=p>(),</span> <span class=n>p_method</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=k>if</span> <span class=p>(</span><span class=n>method</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=k>return</span> <span class=n>method</span><span class=o>-&gt;</span><span class=n>call</span><span class=p>(</span><span class=k>this</span><span class=p>,</span> <span class=n>p_args</span><span class=p>,</span> <span class=n>p_argcount</span><span class=p>,</span> <span class=n>r_error</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=p>}</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=n>r_error</span><span class=p>.</span><span class=n>error</span> <span class=o>=</span> <span class=n>Callable</span><span class=o>::</span><span class=n>CallError</span><span class=o>::</span><span class=n>CALL_ERROR_INVALID_METHOD</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=k>return</span> <span class=nf>Variant</span><span class=p>();</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></div><h4 id=2-classdbget_method-沿继承链查找>2. ClassDB::get_method 沿继承链查找</h4><blockquote><p><strong>证据等级 A</strong>：基于 <code>core/object/class_db.cpp</code> 验证。</p></blockquote><div class=highlight><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=c1>// core/object/class_db.cpp（简化）
+</span></span></span><span class=line><span class=cl><span class=n>MethodBind</span> <span class=o>*</span><span class=n>ClassDB</span><span class=o>::</span><span class=n>get_method</span><span class=p>(</span><span class=k>const</span> <span class=n>StringName</span> <span class=o>&amp;</span><span class=n>p_class</span><span class=p>,</span> <span class=k>const</span> <span class=n>StringName</span> <span class=o>&amp;</span><span class=n>p_method</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=n>ClassInfo</span> <span class=o>*</span><span class=n>info</span> <span class=o>=</span> <span class=n>classes</span><span class=p>.</span><span class=n>getptr</span><span class=p>(</span><span class=n>p_class</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=k>while</span> <span class=p>(</span><span class=n>info</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=n>MethodBind</span> <span class=o>**</span><span class=n>method</span> <span class=o>=</span> <span class=n>info</span><span class=o>-&gt;</span><span class=n>method_map</span><span class=p>.</span><span class=n>getptr</span><span class=p>(</span><span class=n>p_method</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>        <span class=k>if</span> <span class=p>(</span><span class=n>method</span><span class=p>)</span> <span class=k>return</span> <span class=o>*</span><span class=n>method</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>        <span class=n>info</span> <span class=o>=</span> <span class=n>info</span><span class=o>-&gt;</span><span class=n>parent_ptr</span><span class=p>;</span> <span class=c1>// 沿继承链查找
+</span></span></span><span class=line><span class=cl>    <span class=p>}</span>
+</span></span><span class=line><span class=cl>    <span class=k>return</span> <span class=k>nullptr</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></div><h4 id=3-methodbindcall-的参数转换>3. MethodBind::call 的参数转换</h4><blockquote><p><strong>证据等级 A</strong>：基于 <code>core/object/method_bind.h</code> 验证。</p></blockquote><div class=highlight><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=c1>// core/object/method_bind.h（简化）
+</span></span></span><span class=line><span class=cl><span class=k>template</span> <span class=o>&lt;</span><span class=k>class</span> <span class=nc>T</span><span class=p>,</span> <span class=k>class</span> <span class=nc>R</span><span class=p>,</span> <span class=k>class</span> <span class=nc>P0</span><span class=o>&gt;</span>
+</span></span><span class=line><span class=cl><span class=k>class</span> <span class=nc>MethodBind1</span> <span class=o>:</span> <span class=k>public</span> <span class=n>MethodBind</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=n>R</span> <span class=p>(</span><span class=n>T</span><span class=o>::*</span><span class=n>method</span><span class=p>)(</span><span class=n>P0</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=k>virtual</span> <span class=n>Variant</span> <span class=nf>call</span><span class=p>(</span><span class=n>Object</span> <span class=o>*</span><span class=n>p_object</span><span class=p>,</span> <span class=k>const</span> <span class=n>Variant</span> <span class=o>**</span><span class=n>p_args</span><span class=p>,</span> <span class=kt>int</span> <span class=n>p_argcount</span><span class=p>,</span> <span class=n>Callable</span><span class=o>::</span><span class=n>CallError</span> <span class=o>&amp;</span><span class=n>r_error</span><span class=p>)</span> <span class=k>override</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=c1>// 参数转换：Variant → P0
+</span></span></span><span class=line><span class=cl>        <span class=n>P0</span> <span class=n>arg0</span> <span class=o>=</span> <span class=n>p_args</span><span class=p>[</span><span class=mi>0</span><span class=p>]</span><span class=o>-&gt;</span><span class=k>operator</span> <span class=n>P0</span><span class=p>();</span> <span class=c1>// 例如 Variant → Node*
+</span></span></span><span class=line><span class=cl>        <span class=c1>// 调用实际方法
+</span></span></span><span class=line><span class=cl>        <span class=n>R</span> <span class=n>ret</span> <span class=o>=</span> <span class=p>(</span><span class=k>static_cast</span><span class=o>&lt;</span><span class=n>T</span><span class=o>*&gt;</span><span class=p>(</span><span class=n>p_object</span><span class=p>)</span><span class=o>-&gt;*</span><span class=n>method</span><span class=p>)(</span><span class=n>arg0</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>        <span class=c1>// 返回值转回 Variant
+</span></span></span><span class=line><span class=cl>        <span class=k>return</span> <span class=n>Variant</span><span class=p>(</span><span class=n>ret</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=p>}</span>
+</span></span><span class=line><span class=cl><span class=p>};</span>
+</span></span></code></pre></div><h3 id=关键点-4>关键点</h3><ul><li><strong>调用优先级</strong>：脚本 > GDExtension > ClassDB，允许脚本覆盖 C++ 方法</li><li><strong>继承链查找</strong>：方法未在当前类找到时，沿继承链向上查找</li><li><strong>MethodBind 模板</strong>：编译期生成参数转换代码，避免运行时类型判断</li><li><strong>Variant 转换</strong>：Variant 通过 <code>operator T()</code> 转换为 C++ 类型</li></ul><hr><h2 id=六个案例的共性总结>六个案例的共性总结</h2><h3 id=调用链的通用模式>调用链的通用模式</h3><div class=highlight><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>GDScript 代码
+</span></span><span class=line><span class=cl>    │
+</span></span><span class=line><span class=cl>    ▼
+</span></span><span class=line><span class=cl>GDScript VM（解释执行）
+</span></span><span class=line><span class=cl>    │
+</span></span><span class=line><span class=cl>    ▼
+</span></span><span class=line><span class=cl>Object::callp（动态调用入口）
+</span></span><span class=line><span class=cl>    │
+</span></span><span class=line><span class=cl>    ├── 脚本实例（优先）
+</span></span><span class=line><span class=cl>    ├── GDExtension
+</span></span><span class=line><span class=cl>    └── ClassDB（C++ 方法）
+</span></span><span class=line><span class=cl>        │
+</span></span><span class=line><span class=cl>        ▼
+</span></span><span class=line><span class=cl>    MethodBind::call（参数转换）
+</span></span><span class=line><span class=cl>        │
+</span></span><span class=line><span class=cl>        ▼
+</span></span><span class=line><span class=cl>    实际 C++ 方法
+</span></span><span class=line><span class=cl>        │
+</span></span><span class=line><span class=cl>        ├── 操作 Object 成员
+</span></span><span class=line><span class=cl>        ├── 通过 RID 调用 Server
+</span></span><span class=line><span class=cl>        └── 通过 Server 调用 Backend
+</span></span><span class=line><span class=cl>            │
+</span></span><span class=line><span class=cl>            ▼
+</span></span><span class=line><span class=cl>        硬件（GPU/CPU/音频设备）
+</span></span></code></pre></div><h3 id=核心机制串联>核心机制串联</h3><table><thead><tr><th>案例</th><th>Object</th><th>Variant</th><th>ClassDB</th><th>RID</th><th>Signal</th><th>Node</th></tr></thead><tbody><tr><td>启动</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>-</td><td>✓</td></tr><tr><td>创建 Node</td><td>✓</td><td>✓</td><td>✓</td><td>-</td><td>-</td><td>✓</td></tr><tr><td>Signal</td><td>✓</td><td>✓</td><td>✓</td><td>-</td><td>✓</td><td>-</td></tr><tr><td>渲染</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>-</td><td>✓</td></tr><tr><td>物理</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td></tr><tr><td>GDScript→C++</td><td>✓</td><td>✓</td><td>✓</td><td>-</td><td>-</td><td>✓</td></tr></tbody></table><p>可以看到，六大核心概念在每个调用链中都扮演关键角色，它们共同构成了 Godot 引擎的运行时基础。</p><h3 id=性能关键点>性能关键点</h3><ol><li><strong>StringName</strong>：方法名、信号名使用 StringName，比较 O(1)</li><li><strong>MethodBind 模板</strong>：编译期生成参数转换，避免运行时开销</li><li><strong>RID O(1) 查找</strong>：RID_Owner 内部数组索引</li><li><strong>栈分配优化</strong>：信号 ≤5 连接用栈数组</li><li><strong>批量处理</strong>：渲染与物理在帧末批量执行，减少调用开销</li></ol><hr><h2 id=参考与延伸>参考与延伸</h2><h3 id=关键源码索引>关键源码索引</h3><table><thead><tr><th>案例</th><th>关键文件</th></tr></thead><tbody><tr><td>启动</td><td><code>main/main.cpp</code>、<code>platform/windows/godot_windows.cpp</code></td></tr><tr><td>创建 Node</td><td><code>core/object/class_db.cpp</code>、<code>core/object/object.cpp:191</code></td></tr><tr><td>Signal</td><td><code>core/object/object.cpp:1256</code></td></tr><tr><td>渲染</td><td><code>scene/2d/node_2d.cpp</code>、<code>servers/rendering/rendering_server.cpp</code></td></tr><tr><td>物理</td><td><code>scene/2d/physics_body_2d.cpp</code>、<code>servers/physics_2d/</code></td></tr><tr><td>GDScript→C++</td><td><code>core/object/object.cpp</code>、<code>core/object/method_bind.h</code></td></tr></tbody></table><h3 id=相关文档>相关文档</h3><ul><li><a href=./02-%e6%a0%b8%e5%bf%83%e6%a6%82%e5%bf%b5.md>02-核心概念.md</a>：六大核心概念详解</li><li><a href=./03-%e5%90%af%e5%8a%a8%e6%b5%81%e7%a8%8b.md>03-启动流程.md</a>：启动流程详解</li><li><a href=./04-%e6%9c%8d%e5%8a%a1%e5%99%a8%e6%9e%b6%e6%9e%84.md>04-服务器架构.md</a>：服务器架构详解</li><li><a href=./06-C++%e6%8a%80%e6%9c%af%e5%88%86%e6%9e%90.md>06-C++技术分析.md</a>：MethodBind 等模板技巧</li></ul></div><footer class=article-footer><span>归档于</span>
+<a href=/categories/godot/>Godot</a></footer></article><aside class="toc glass-panel" aria-label=文章目录><strong>本文目录</strong><nav id=TableOfContents><ul><li><a href=#概述>概述</a></li><li><a href=#案例一引擎启动到第一帧>案例一：引擎启动到第一帧</a><ul><li><a href=#场景描述>场景描述</a></li><li><a href=#调用栈>调用栈</a></li><li><a href=#数据流图>数据流图</a></li><li><a href=#关键代码>关键代码</a></li><li><a href=#时序图>时序图</a></li></ul></li><li><a href=#案例二创建-node>案例二：创建 Node</a><ul><li><a href=#场景描述-1>场景描述</a></li><li><a href=#调用栈-1>调用栈</a></li><li><a href=#数据流图-1>数据流图</a></li><li><a href=#关键代码-1>关键代码</a></li><li><a href=#关键点>关键点</a></li></ul></li><li><a href=#案例三signal-触发>案例三：Signal 触发</a><ul><li><a href=#场景描述-2>场景描述</a></li><li><a href=#调用栈-2>调用栈</a></li><li><a href=#数据流图-2>数据流图</a></li><li><a href=#关键代码-2>关键代码</a></li><li><a href=#关键点-1>关键点</a></li></ul></li><li><a href=#案例四渲染提交>案例四：渲染提交</a><ul><li><a href=#场景描述-3>场景描述</a></li><li><a href=#调用栈-3>调用栈</a></li><li><a href=#数据流图-3>数据流图</a></li><li><a href=#关键代码-3>关键代码</a></li><li><a href=#关键点-2>关键点</a></li></ul></li><li><a href=#案例五物理模拟>案例五：物理模拟</a><ul><li><a href=#场景描述-4>场景描述</a></li><li><a href=#调用栈-4>调用栈</a></li><li><a href=#数据流图-4>数据流图</a></li><li><a href=#关键点-3>关键点</a></li></ul></li><li><a href=#案例六gdscript-调用-c-方法>案例六：GDScript 调用 C++ 方法</a><ul><li><a href=#场景描述-5>场景描述</a></li><li><a href=#调用栈-5>调用栈</a></li><li><a href=#数据流图-5>数据流图</a></li><li><a href=#关键代码-4>关键代码</a></li><li><a href=#关键点-4>关键点</a></li></ul></li><li><a href=#六个案例的共性总结>六个案例的共性总结</a><ul><li><a href=#调用链的通用模式>调用链的通用模式</a></li><li><a href=#核心机制串联>核心机制串联</a></li><li><a href=#性能关键点>性能关键点</a></li></ul></li><li><a href=#参考与延伸>参考与延伸</a><ul><li><a href=#关键源码索引>关键源码索引</a></li><li><a href=#相关文档>相关文档</a></li></ul></li></ul></nav></aside></div></main><footer class=site-footer><div class=footer-inner><p>&copy; 2023–2026 你的名字. 保留所有权利。</p><div class=footer-meta></div></div></footer><script defer src=https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js crossorigin=anonymous></script><script defer src=https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js crossorigin=anonymous></script><script>document.addEventListener("DOMContentLoaded",function(){typeof katex!="undefined"&&document.querySelectorAll(".katex-block[data-math]").forEach(function(e){try{katex.render(e.textContent,e,{displayMode:!0,throwOnError:!1})}catch{}}),typeof renderMathInElement=="function"&&renderMathInElement(document.body,{delimiters:[{left:"$$",right:"$$",display:!0},{left:"\\[",right:"\\]",display:!0},{left:"$",right:"$",display:!1},{left:"\\(",right:"\\)",display:!1}],ignoredTags:["script","noscript","style","textarea","pre","code"],throwOnError:!1})})</script><script src=/js/main.min.d67c76b16258bc785c9a7bda52b7326bf67bb61290c8e66e975ed27a7330b4c9.js integrity="sha256-1nx2sWJYvHhcmnvaUrcya/Z7thKQyOZul17SenMwtMk=" defer></script></body></html>

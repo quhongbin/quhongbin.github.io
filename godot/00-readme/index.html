@@ -1,0 +1,455 @@
+<!doctype html><html lang=zh-CN dir=ltr><head><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><meta name=color-scheme content="light dark"><meta name=theme-color content="#08111f" media="(prefers-color-scheme: dark)"><meta name=theme-color content="#fff5e1" media="(prefers-color-scheme: light)"><script>document.documentElement.classList.add("js"),function(){try{var e,t=localStorage.getItem("site-theme");t==="light"||t==="dark"?document.documentElement.setAttribute("data-theme",t):document.documentElement.setAttribute("data-theme",window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"),e=localStorage.getItem("site-palette"),(e==="macos"||e==="github"||e==="gruvbox")&&document.documentElement.setAttribute("data-palette",e)}catch{}}()</script><title>Godot Learning-0 · 我的博客</title><meta name=description content="Godot Engine C++ 源码架构学习教材 源码版本：Godot 4.8.dev（master 分支，commit 截至 2026-08-26） 源码地址：https://github.com/godotengine/godot 教材定位：面向已掌握 C++ 基础与游戏引擎概念、希望深入理解 Godot 引擎内部实现的中高级开发者 证据等级说明：本教材所有结论均标注证据等级
+"><meta name=author content="你的名字"><link rel=canonical href=https://quhongbin.github.io/godot/00-readme/><link rel=alternate hreflang=zh-CN href=https://quhongbin.github.io/godot/00-readme/><meta property="og:type" content="article"><meta property="og:title" content="Godot Learning-0 · 我的博客"><meta property="og:description" content="Godot Engine C++ 源码架构学习教材 源码版本：Godot 4.8.dev（master 分支，commit 截至 2026-08-26） 源码地址：https://github.com/godotengine/godot 教材定位：面向已掌握 C++ 基础与游戏引擎概念、希望深入理解 Godot 引擎内部实现的中高级开发者 证据等级说明：本教材所有结论均标注证据等级
+"><meta property="og:url" content="https://quhongbin.github.io/godot/00-readme/"><meta property="og:site_name" content="我的博客"><link rel=stylesheet href=/css/main.min.40ad2a9c00a93175c79e471a6792f23457c527e9c46cc8ee6e16d300f7bf6674.css integrity="sha256-QK0qnACpMXXHnkcaZ5LyNFfFJ+nEbMjubhbTAPe/ZnQ="><link rel=stylesheet href=/css/site-palettes.min.0f2ed388ed0b74ab72dcd2b144a6a19acbd23a4edca157c36eecdffad3dfe7bf.css integrity="sha256-Dy7TiO0LdKty3NKxRKahmsvSOk7coVfDbuzf+tPf578="><link rel=stylesheet href=/css/code-themes.min.78bd37b0419e6af001a97d6754f5264cacc1413c97b2e5d67033547083130a12.css integrity="sha256-eL03sEGeavABqX1nVPUmTKzBQTyXsuXWcDNUcIMTChI="><link rel=stylesheet href=https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css crossorigin=anonymous><style>:root{--content-width:1400px;--article-width:1100px;--toc-width:250px;--article-pad:clamp(25px, 6vw, 72px)}</style><link rel=icon href=/images/avatar.webp></head><body class=page-kind-page><a class=skip-link href=#main-content>跳到正文</a><div class=site-background aria-hidden=true></div><header class=site-header data-site-header><div class=header-inner><a class=site-brand href=/ aria-label=我的博客><img class=brand-avatar src=/images/avatar.webp alt width=44 height=44>
+<span class=brand-copy><strong>我的博客</strong>
+<small>在代码与生活之间</small>
+</span></a><button class=menu-toggle type=button aria-expanded=false aria-controls=site-navigation data-menu-toggle>
+<span class=menu-toggle-lines aria-hidden=true></span>
+<span class=sr-only>打开或关闭菜单</span></button><nav id=site-navigation class=site-navigation aria-label=主导航 data-navigation><ul class=nav-menu><li><a href=/>首页</a></li><li class="nav-item has-categories" data-categories-item><a href=/posts/ data-categories-trigger aria-haspopup=true>文章</a><ul class=categories-dropdown><li class=categories-all><a href=/posts/>全部文章</a></li><li><a href=/categories/godot/><span class=cat-name>Godot</span>
+<span class=term-count>8</span></a></li></ul></li><li><a href=/notes/>速记</a></li><li><a href=/tags/>标签</a></li><li><a href=/logs/>日志</a></li><li><a href=/about/>关于</a></li></ul><div class=header-social aria-label=社交链接><a href=https://github.com/your-name title=GitHub aria-label=GitHub target=_blank rel="noopener noreferrer"><svg class="icon icon-github" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 .7A11.5 11.5.0 008.36 23.11c.58.11.79-.25.79-.56v-2.23c-3.22.7-3.9-1.37-3.9-1.37-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.71.08-.71 1.17.08 1.78 1.2 1.78 1.2 1.04 1.78 2.72 1.27 3.38.97.1-.75.4-1.27.74-1.56-2.57-.29-5.27-1.28-5.27-5.68.0-1.25.45-2.28 1.19-3.08-.12-.29-.52-1.46.11-3.04.0.0.97-.31 3.16 1.18a10.98 10.98.0 015.76.0c2.19-1.49 3.15-1.18 3.15-1.18.63 1.58.23 2.75.11 3.04.74.8 1.19 1.83 1.19 3.08.0 4.41-2.71 5.38-5.29 5.67.42.36.79 1.07.79 2.16v3.2c0 .31.21.68.8.56A11.5 11.5.0 0012 .7z"/></svg>
+</a><a href=mailto:hello@example.com title=Email aria-label=Email><svg class="icon icon-email" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 4h18a2 2 0 012 2v12a2 2 0 01-2 2H3a2 2 0 01-2-2V6a2 2 0 012-2zm0 2 9 6 9-6H3zm18 12V8.4l-9 6-9-6V18h18z"/></svg></a></div><div class=theme-picker><button class=theme-toggle type=button data-theme-toggle aria-label="切换亮色 / 暗色主题" title="切换亮色 / 暗色主题">
+<svg class="icon icon-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><g stroke-linecap="round"><line x1="12" y1="2.5" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="21.5"/><line x1="2.5" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="21.5" y2="12"/><line x1="5.2" y1="5.2" x2="6.95" y2="6.95"/><line x1="17.05" y1="17.05" x2="18.8" y2="18.8"/><line x1="5.2" y1="18.8" x2="6.95" y2="17.05"/><line x1="17.05" y1="6.95" x2="18.8" y2="5.2"/></g></svg>
+<svg class="icon icon-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 019.5 4a.5.5.0 00-.78-.55 9.5 9.5.0 1011.83 11.83.5.5.0 00-.55-.78z"/></svg></button><div class=palette-menu role=group aria-label=主题配色><strong>主题配色</strong><div class=palette-group-label>亮色</div><button class=palette-option type=button data-palette-value=default data-palette-mode=light>站点默认 · 亮色</button>
+<button class=palette-option type=button data-palette-value=macos data-palette-mode=light>macOS · 亮色</button>
+<button class=palette-option type=button data-palette-value=github data-palette-mode=light>GitHub · 亮色</button>
+<button class=palette-option type=button data-palette-value=gruvbox data-palette-mode=light>Gruvbox · 亮色</button><div class=palette-group-label>暗色</div><button class=palette-option type=button data-palette-value=default data-palette-mode=dark>站点默认 · 暗色</button>
+<button class=palette-option type=button data-palette-value=macos data-palette-mode=dark>macOS · 暗色</button>
+<button class=palette-option type=button data-palette-value=github data-palette-mode=dark>GitHub · 暗色</button>
+<button class=palette-option type=button data-palette-value=gruvbox data-palette-mode=dark>Gruvbox · 暗色</button></div></div><details class=language-switcher><summary aria-label=选择语言><span aria-hidden=true>文/A</span>
+<span>简体中文</span></summary><ul><li><a href=/godot/00-readme/ lang=zh-CN aria-current=true>简体中文</a></li></ul></details></nav></div></header><main id=main-content class=site-main><div class=article-layout><article class="article glass-panel reveal"><div class=reading-progress aria-hidden=true><span data-reading-progress></span></div><header class=article-header><a class=back-link href=/godot/>← 返回列表</a><h1>Godot Learning-0</h1><div class=article-meta><time datetime=2026-08-26>August 26, 2026</time>
+<span>阅读约 14 分钟</span>
+<span>6888 字</span></div></header><div class="prose article-content" data-article-content><h1 id=godot-engine-c-源码架构学习教材>Godot Engine C++ 源码架构学习教材</h1><blockquote><p><strong>源码版本</strong>：Godot 4.8.dev（master 分支，commit 截至 2026-08-26）
+<strong>源码地址</strong>：https://github.com/godotengine/godot
+<strong>教材定位</strong>：面向已掌握 C++ 基础与游戏引擎概念、希望深入理解 Godot 引擎内部实现的中高级开发者
+<strong>证据等级说明</strong>：本教材所有结论均标注证据等级</p><ul><li><strong>A 级</strong>：直接引用源码（含文件路径 + 行号），可在当前版本逐行验证</li><li><strong>B 级</strong>：基于源码逻辑的合理推断，含具体文件依据</li><li><strong>C 级</strong>：基于 Godot 官方文档或社区共识的描述</li><li><strong>D 级</strong>：作者经验性总结，无直接源码依据</li></ul></blockquote><hr><h2 id=一教材总览>一、教材总览</h2><p>本教材是一套<strong>基于 Godot 4.x master 分支真实源码</strong>的 C++ 架构学习材料，目标是让读者能够：</p><ol><li><strong>看懂</strong> Godot 引擎的整体目录组织与分层架构</li><li><strong>理解</strong> Object / Variant / ClassDB / RID / Signal / Node 六大核心概念的实现机制</li><li><strong>追踪</strong> 从用户代码（GDScript / C#）到 CPU 执行的完整调用链</li><li><strong>掌握</strong> Godot 源码中使用的 C++ 工程技巧与设计模式</li><li><strong>建立</strong> 独立阅读、修改、扩展 Godot 源码的能力</li></ol><p>教材共分 9 个文档，按"由总到分、由概念到实现、由静态到动态"的顺序组织：</p><table><thead><tr><th>文档</th><th>标题</th><th>核心内容</th></tr></thead><tbody><tr><td><code>00-README.md</code></td><td>总览与源码地图</td><td>本文档，全局索引、源码地图、核心概念关系图、学习路线</td></tr><tr><td><code>01-总体架构.md</code></td><td>七大目录与分层设计</td><td>core/servers/scene/platform/drivers/main/modules 的职责与依赖</td></tr><tr><td><code>02-核心概念.md</code></td><td>六大支柱深度解析</td><td>Object / Variant / ClassDB / RID / Signal / Node</td></tr><tr><td><code>03-启动流程.md</code></td><td>从 main() 到第一帧</td><td>完整启动链、初始化顺序、MainLoop 生命周期</td></tr><tr><td><code>04-服务器架构.md</code></td><td>Server / RID / Backend</td><td>渲染/物理/音频服务器的抽象与多线程模型</td></tr><tr><td><code>05-调用链案例.md</code></td><td>六个跨层调用链</td><td>启动、创建 Node、Signal、Rendering、Physics、GDScript→C++</td></tr><tr><td><code>06-C++技术分析.md</code></td><td>源码中的 C++ 技巧</td><td>前向声明、虚函数、模板、宏、引用计数、Variant 内部实现</td></tr><tr><td><code>07-模块系统与扩展.md</code></td><td>modules/ 与 GDExtension</td><td>模块注册机制、4 级初始化、扩展系统</td></tr><tr><td><code>08-源码阅读路线.md</code></td><td>八阶段学习路径</td><td>从入门到精通的阅读顺序、设计权衡、最终目标</td></tr></tbody></table><hr><h2 id=二源码地图source-map>二、源码地图（Source Map）</h2><blockquote><p><strong>证据等级 A</strong>：以下目录结构基于 <code>/home/z/my-project/godot/</code> 实际检出内容验证。</p></blockquote><h3 id=21-顶层目录结构>2.1 顶层目录结构</h3><div class=highlight><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>godot/
+</span></span><span class=line><span class=cl>├── core/           # 核心库：Object 系统、Variant、容器、数学、IO、OS 抽象
+</span></span><span class=line><span class=cl>├── servers/        # 服务器层：渲染、物理、音频、文本、导航等抽象接口
+</span></span><span class=line><span class=cl>├── scene/          # 场景层：Node、SceneTree、CanvasItem、Control、资源系统
+</span></span><span class=line><span class=cl>├── platform/       # 平台层：OS 具体实现（windows/linux/macos/android/ios/web）
+</span></span><span class=line><span class=cl>├── drivers/        # 驱动层：具体后端实现（gles3/vulkan/alsa/pulseaudio/wasapi）
+</span></span><span class=line><span class=cl>├── main/           # 入口层：main.cpp、Main 类（setup/start/iteration/cleanup）
+</span></span><span class=line><span class=cl>├── modules/        # 模块层：可选功能（gdscript/mono/navigation/web/xr...）
+</span></span><span class=line><span class=cl>├── editor/         # 编辑器：编辑器 UI 与工具（仅 TOOLS_ENABLED 时编译）
+</span></span><span class=line><span class=cl>├── misc/           # 杂项：构建脚本、dist 配置、测试用例
+</span></span><span class=line><span class=cl>├── platform/       # 平台适配（重复列出，含 android/ios/web/windows/linux/macos）
+</span></span><span class=line><span class=cl>├── thirdparty/     # 第三方库：zlib/libpng/freetype/glslang/bullet...
+</span></span><span class=line><span class=cl>├── doc/            # 文档：类参考生成、翻译
+</span></span><span class=line><span class=cl>└── tests/          # 单元测试与集成测试
+</span></span></code></pre></div><h3 id=22-core-核心库详细地图>2.2 core/ 核心库详细地图</h3><div class=highlight><pre tabindex=0 class=chroma><code class=language-gdscript3 data-lang=gdscript3><span class=line><span class=cl><span class=n>core</span><span class=o>/</span>
+</span></span><span class=line><span class=cl><span class=err>├──</span> <span class=n>object</span><span class=o>/</span>             <span class=c1># Object 对象系统（最核心）</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>├──</span> <span class=n>object</span><span class=o>.</span><span class=n>h</span><span class=o>/.</span><span class=n>cpp</span>           <span class=c1># Object 基类、GDCLASS 宏、notification、signal</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>├──</span> <span class=n>ref_counted</span><span class=o>.</span><span class=n>h</span><span class=o>/.</span><span class=n>cpp</span>      <span class=c1># RefCounted 引用计数基类</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>├──</span> <span class=n>class_db</span><span class=o>.</span><span class=n>h</span><span class=o>/.</span><span class=n>cpp</span>         <span class=c1># ClassDB 类注册数据库</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>├──</span> <span class=n>script_language</span><span class=o>.</span><span class=n>h</span>       <span class=c1># ScriptLanguage 抽象（脚本系统基础）</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>├──</span> <span class=n>instance_placeholder</span><span class=o>.</span><span class=n>h</span>  <span class=c1># 实例占位符</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>└──</span> <span class=n>worker_thread_pool</span><span class=o>.</span><span class=n>h</span>    <span class=c1># 工作线程池</span>
+</span></span><span class=line><span class=cl><span class=err>├──</span> <span class=n>variant</span><span class=o>/</span>            <span class=c1># Variant 动态类型系统</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>├──</span> <span class=n>variant</span><span class=o>.</span><span class=n>h</span><span class=o>/.</span><span class=n>cpp</span>          <span class=c1># Variant 联合体、27 种类型</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>├──</span> <span class=n>callable</span><span class=o>.</span><span class=n>h</span><span class=o>/.</span><span class=n>cpp</span>         <span class=c1># Callable 可调用对象</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>├──</span> <span class=n>variant_op</span><span class=o>.</span><span class=n>h</span><span class=o>/.</span><span class=n>cpp</span>       <span class=c1># 运算符表</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>├──</span> <span class=n>variant_internal</span><span class=o>.</span><span class=n>h</span>      <span class=c1># 内部访问器</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>└──</span> <span class=n>variant_utility</span><span class=o>.</span><span class=n>cpp</span>     <span class=c1># 工具函数</span>
+</span></span><span class=line><span class=cl><span class=err>├──</span> <span class=n>templates</span><span class=o>/</span>          <span class=c1># 模板容器与工具</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>├──</span> <span class=n>rid</span><span class=o>.</span><span class=n>h</span>                   <span class=c1># RID 轻量句柄</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>├──</span> <span class=n>rid_owner</span><span class=o>.</span><span class=n>h</span>             <span class=c1># RID_Owner&lt;T&gt; 所有权管理</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>├──</span> <span class=n>vector</span><span class=o>.</span><span class=n>h</span>                <span class=c1># 动态数组</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>├──</span> <span class=n>hash_map</span><span class=o>.</span><span class=n>h</span>              <span class=c1># 哈希表</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>├──</span> <span class=n>local_vector</span><span class=o>.</span><span class=n>h</span>          <span class=c1># 局部数组（无堆分配）</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>├──</span> <span class=n>command_queue_mt</span><span class=o>.</span><span class=n>h</span>      <span class=c1># 多线程命令队列</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>├──</span> <span class=n>paged_array</span><span class=o>.</span><span class=n>h</span>           <span class=c1># 分页数组</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>└──</span> <span class=n>cowdata</span><span class=o>.</span><span class=n>h</span>               <span class=c1># 写时复制数据</span>
+</span></span><span class=line><span class=cl><span class=err>├──</span> <span class=n>math</span><span class=o>/</span>               <span class=c1># 数学库</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>├──</span> <span class=n>math_defs</span><span class=o>.</span><span class=n>h</span>             <span class=c1># real_t 定义（float/double）</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>├──</span> <span class=n>vector2</span><span class=o>.</span><span class=n>h</span><span class=o>/</span><span class=n>vector3</span><span class=o>.</span><span class=n>h</span>     <span class=c1># 向量</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>├──</span> <span class=n>transform2d</span><span class=o>.</span><span class=n>h</span>           <span class=c1># 2D 变换</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>├──</span> <span class=n>transform3d</span><span class=o>.</span><span class=n>h</span>           <span class=c1># 3D 变换</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>├──</span> <span class=n>basis</span><span class=o>.</span><span class=n>h</span>                 <span class=c1># 3x3 矩阵</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>├──</span> <span class=n>aabb</span><span class=o>.</span><span class=n>h</span>                  <span class=c1># 轴对齐包围盒</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>├──</span> <span class=n>quaternion</span><span class=o>.</span><span class=n>h</span>            <span class=c1># 四元数</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>└──</span> <span class=n>geometry_2d</span><span class=o>/</span><span class=mi>3</span><span class=n>d</span><span class=o>.</span><span class=n>h</span>        <span class=c1># 几何算法</span>
+</span></span><span class=line><span class=cl><span class=err>├──</span> <span class=n>io</span><span class=o>/</span>                 <span class=c1># 输入输出</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>├──</span> <span class=n>resource_loader</span><span class=o>.</span><span class=n>h</span>       <span class=c1># 资源加载器</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>├──</span> <span class=n>resource_saver</span><span class=o>.</span><span class=n>h</span>        <span class=c1># 资源保存器</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>├──</span> <span class=n>file_access</span><span class=o>.</span><span class=n>h</span>           <span class=c1># 文件访问</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>├──</span> <span class=n>image</span><span class=o>.</span><span class=n>h</span>                 <span class=c1># 图像</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>├──</span> <span class=n>config_file</span><span class=o>.</span><span class=n>h</span>           <span class=c1># 配置文件</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>├──</span> <span class=n>json</span><span class=o>.</span><span class=n>h</span>                  <span class=c1># JSON</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>└──</span> <span class=n>compression</span><span class=o>.</span><span class=n>h</span>           <span class=c1># 压缩</span>
+</span></span><span class=line><span class=cl><span class=err>├──</span> <span class=n>os</span><span class=o>/</span>                 <span class=c1># 操作系统抽象</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>├──</span> <span class=n>os</span><span class=o>.</span><span class=n>h</span>                    <span class=c1># OS 抽象基类</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>├──</span> <span class=n>main_loop</span><span class=o>.</span><span class=n>h</span>             <span class=c1># MainLoop 主循环抽象</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>├──</span> <span class=n>thread</span><span class=o>.</span><span class=n>h</span>                <span class=c1># 线程抽象</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>├──</span> <span class=n>mutex</span><span class=o>.</span><span class=n>h</span>                 <span class=c1># 互斥锁</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>├──</span> <span class=n>semaphore</span><span class=o>.</span><span class=n>h</span>             <span class=c1># 信号量</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>├──</span> <span class=n>memory</span><span class=o>.</span><span class=n>h</span>                <span class=c1># 内存分配（memnew/memdelete）</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>├──</span> <span class=n>keyboard</span><span class=o>.</span><span class=n>h</span>              <span class=c1># 键盘映射</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>└──</span> <span class=n>time</span><span class=o>.</span><span class=n>h</span>                  <span class=c1># 时间</span>
+</span></span><span class=line><span class=cl><span class=err>├──</span> <span class=n>config</span><span class=o>/</span>             <span class=c1># 全局配置</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>├──</span> <span class=n>engine</span><span class=o>.</span><span class=n>h</span>                <span class=c1># Engine 单例</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>├──</span> <span class=n>project_settings</span><span class=o>.</span><span class=n>h</span>      <span class=c1># 项目设置</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>└──</span> <span class=n>settings</span><span class=o>.</span><span class=n>h</span>              <span class=c1># 引擎设置</span>
+</span></span><span class=line><span class=cl><span class=err>├──</span> <span class=n>string</span><span class=o>/</span>             <span class=c1># 字符串系统</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>├──</span> <span class=n>ustring</span><span class=o>.</span><span class=n>h</span>               <span class=c1># String（UTF-8）</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>├──</span> <span class=n>string_name</span><span class=o>.</span><span class=n>h</span>           <span class=c1># StringName（ intern 字符串）</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>├──</span> <span class=n>node_path</span><span class=o>.</span><span class=n>h</span>             <span class=c1># NodePath</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>└──</span> <span class=n>translation</span><span class=o>.</span><span class=n>h</span>           <span class=c1># 翻译</span>
+</span></span><span class=line><span class=cl><span class=err>├──</span> <span class=n>error</span><span class=o>/</span>              <span class=c1># 错误处理</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>├──</span> <span class=n>error_list</span><span class=o>.</span><span class=n>h</span>            <span class=c1># 错误码枚举</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>├──</span> <span class=n>error_macros</span><span class=o>.</span><span class=n>h</span>          <span class=c1># ERR_PRINT/ERR_FAIL_COND 宏</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>└──</span> <span class=n>crash_handler</span><span class=o>.</span><span class=n>h</span>         <span class=c1># 崩溃处理</span>
+</span></span><span class=line><span class=cl><span class=err>├──</span> <span class=n>crypto</span><span class=o>/</span>             <span class=c1># 加密</span>
+</span></span><span class=line><span class=cl><span class=err>├──</span> <span class=n>debug</span><span class=o>/</span>              <span class=c1># 调试</span>
+</span></span><span class=line><span class=cl><span class=err>├──</span> <span class=n>extension</span><span class=o>/</span>          <span class=c1># GDExtension 接口</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>├──</span> <span class=n>gdextension_interface</span><span class=o>.</span><span class=n>gen</span><span class=o>.</span><span class=n>h</span>  <span class=c1># 扩展接口定义</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>└──</span> <span class=n>gdextension</span><span class=o>.</span><span class=n>h</span>           <span class=c1># GDExtension 类</span>
+</span></span><span class=line><span class=cl><span class=err>├──</span> <span class=n>input</span><span class=o>/</span>              <span class=c1># 输入事件</span>
+</span></span><span class=line><span class=cl><span class=err>├──</span> <span class=n>variant</span><span class=o>/</span>            <span class=c1># Variant（重复列出）</span>
+</span></span><span class=line><span class=cl><span class=err>├──</span> <span class=n>register_core_types</span><span class=o>.</span><span class=n>cpp</span>     <span class=c1># 核心类型注册入口</span>
+</span></span><span class=line><span class=cl><span class=err>└──</span> <span class=n>core_constants</span><span class=o>.</span><span class=n>cpp</span>          <span class=c1># 核心常量</span>
+</span></span></code></pre></div><h3 id=23-servers-服务器层详细地图>2.3 servers/ 服务器层详细地图</h3><div class=highlight><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>servers/
+</span></span><span class=line><span class=cl>├── rendering/                  # 渲染服务器
+</span></span><span class=line><span class=cl>│   ├── rendering_server.h      # RenderingServer 抽象（纯虚）
+</span></span><span class=line><span class=cl>│   ├── rendering_method.h      # RenderingMethod 渲染器抽象
+</span></span><span class=line><span class=cl>│   ├── rendering_device.h      # RenderingDevice GPU 抽象
+</span></span><span class=line><span class=cl>│   ├── rendering_device_common.h
+</span></span><span class=line><span class=cl>│   └── ...
+</span></span><span class=line><span class=cl>├── physics_2d/                 # 2D 物理服务器
+</span></span><span class=line><span class=cl>│   ├── physics_server_2d.h     # PhysicsServer2D 抽象
+</span></span><span class=line><span class=cl>│   ├── physics_server_2d_wrap_mt.h  # 多线程包装
+</span></span><span class=line><span class=cl>│   ├── physics_server_2d_extension.h  # GDExtension 扩展
+</span></span><span class=line><span class=cl>│   ├── physics_server_2d_dummy.h  # 空实现
+</span></span><span class=line><span class=cl>│   └── physics_server_2d_manager.h  # 后端管理
+</span></span><span class=line><span class=cl>├── physics_3d/                 # 3D 物理服务器（结构同上）
+</span></span><span class=line><span class=cl>├── audio/                      # 音频服务器
+</span></span><span class=line><span class=cl>│   ├── audio_server.h          # AudioServer
+</span></span><span class=line><span class=cl>│   └── audio_stream.h
+</span></span><span class=line><span class=cl>├── text/                       # 文本服务器
+</span></span><span class=line><span class=cl>│   ├── text_server.h           # TextServer 抽象
+</span></span><span class=line><span class=cl>│   └── text_server_manager.h
+</span></span><span class=line><span class=cl>├── navigation/                 # 导航服务器
+</span></span><span class=line><span class=cl>│   └── navigation_server.h
+</span></span><span class=line><span class=cl>├── camera/                     # 摄像头服务器
+</span></span><span class=line><span class=cl>│   └── camera_server.h
+</span></span><span class=line><span class=cl>├── display/                    # 显示服务器
+</span></span><span class=line><span class=cl>│   └── display_server.h        # DisplayServer（窗口/输入/剪贴板）
+</span></span><span class=line><span class=cl>├── xr/                         # XR 服务器
+</span></span><span class=line><span class=cl>└── register_server_types.cpp   # 服务器类型注册入口
+</span></span></code></pre></div><h3 id=24-scene-场景层详细地图>2.4 scene/ 场景层详细地图</h3><div class=highlight><pre tabindex=0 class=chroma><code class=language-gdscript3 data-lang=gdscript3><span class=line><span class=cl><span class=n>scene</span><span class=o>/</span>
+</span></span><span class=line><span class=cl><span class=err>├──</span> <span class=n>main</span><span class=o>/</span>                       <span class=c1># 场景主类</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>├──</span> <span class=n>node</span><span class=o>.</span><span class=n>h</span><span class=o>/.</span><span class=n>cpp</span>             <span class=c1># Node 基类</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>├──</span> <span class=n>scene_tree</span><span class=o>.</span><span class=n>h</span><span class=o>/.</span><span class=n>cpp</span>       <span class=c1># SceneTree（继承 MainLoop）</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>├──</span> <span class=n>canvas_item</span><span class=o>.</span><span class=n>h</span>           <span class=c1># CanvasItem（2D 绘制基类）</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>├──</span> <span class=n>canvas_layer</span><span class=o>.</span><span class=n>h</span>          <span class=c1># CanvasLayer</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>├──</span> <span class=n>viewport</span><span class=o>.</span><span class=n>h</span><span class=o>/.</span><span class=n>cpp</span>         <span class=c1># Viewport</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>├──</span> <span class=n>window</span><span class=o>.</span><span class=n>h</span><span class=o>/.</span><span class=n>cpp</span>           <span class=c1># Window</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>├──</span> <span class=n>shader_globals_buffer</span><span class=o>.</span><span class=n>h</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>└──</span> <span class=n>resource_format_text</span><span class=o>.</span><span class=n>cpp</span>
+</span></span><span class=line><span class=cl><span class=err>├──</span> <span class=mi>2</span><span class=n>d</span><span class=o>/</span>                         <span class=c1># 2D 节点</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>├──</span> <span class=n>node_2d</span><span class=o>.</span><span class=n>h</span>               <span class=c1># Node2D</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>├──</span> <span class=n>sprite_2d</span><span class=o>.</span><span class=n>h</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>├──</span> <span class=n>camera_2d</span><span class=o>.</span><span class=n>h</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>├──</span> <span class=n>collision_object_2d</span><span class=o>.</span><span class=n>h</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>├──</span> <span class=n>rigid_body_2d</span><span class=o>.</span><span class=n>h</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>└──</span> <span class=o>...</span>
+</span></span><span class=line><span class=cl><span class=err>├──</span> <span class=mi>3</span><span class=n>d</span><span class=o>/</span>                         <span class=c1># 3D 节点</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>├──</span> <span class=n>node_3d</span><span class=o>.</span><span class=n>h</span>               <span class=c1># Node3D</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>├──</span> <span class=n>camera_3d</span><span class=o>.</span><span class=n>h</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>├──</span> <span class=n>mesh_instance_3d</span><span class=o>.</span><span class=n>h</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>├──</span> <span class=n>rigid_body_3d</span><span class=o>.</span><span class=n>h</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>└──</span> <span class=o>...</span>
+</span></span><span class=line><span class=cl><span class=err>├──</span> <span class=n>gui</span><span class=o>/</span>                        <span class=c1># UI 控件</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>├──</span> <span class=n>control</span><span class=o>.</span><span class=n>h</span>               <span class=c1># Control（UI 基类）</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>├──</span> <span class=n>button</span><span class=o>.</span><span class=n>h</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>├──</span> <span class=n>label</span><span class=o>.</span><span class=n>h</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>├──</span> <span class=n>line_edit</span><span class=o>.</span><span class=n>h</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>└──</span> <span class=o>...</span>
+</span></span><span class=line><span class=cl><span class=err>├──</span> <span class=n>resources</span><span class=o>/</span>                  <span class=c1># 场景资源</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>├──</span> <span class=n>material</span><span class=o>.</span><span class=n>h</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>├──</span> <span class=n>texture</span><span class=o>.</span><span class=n>h</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>├──</span> <span class=n>mesh</span><span class=o>.</span><span class=n>h</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>├──</span> <span class=n>font</span><span class=o>.</span><span class=n>h</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>└──</span> <span class=o>...</span>
+</span></span><span class=line><span class=cl><span class=err>├──</span> <span class=n>animation</span><span class=o>/</span>                  <span class=c1># 动画系统</span>
+</span></span><span class=line><span class=cl><span class=err>├──</span> <span class=n>audio</span><span class=o>/</span>                      <span class=c1># 场景音频节点</span>
+</span></span><span class=line><span class=cl><span class=err>├──</span> <span class=n>main</span><span class=o>/</span>                       <span class=c1># （重复）</span>
+</span></span><span class=line><span class=cl><span class=err>├──</span> <span class=n>register_scene_types</span><span class=o>.</span><span class=n>cpp</span>    <span class=c1># 场景类型注册入口</span>
+</span></span><span class=line><span class=cl><span class=err>└──</span> <span class=n>scene_constants</span><span class=o>.</span><span class=n>h</span>
+</span></span></code></pre></div><h3 id=25-platform-平台层详细地图>2.5 platform/ 平台层详细地图</h3><div class=highlight><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>platform/
+</span></span><span class=line><span class=cl>├── windows/
+</span></span><span class=line><span class=cl>│   ├── godot_windows.cpp       # WinMain 入口
+</span></span><span class=line><span class=cl>│   ├── os_windows.h/.cpp       # OS_Windows（继承 OS）
+</span></span><span class=line><span class=cl>│   ├── display_server_windows.h
+</span></span><span class=line><span class=cl>│   ├── gl_manager_windows.h
+</span></span><span class=line><span class=cl>│   ├── tts_windows.h
+</span></span><span class=line><span class=cl>│   └── ...
+</span></span><span class=line><span class=cl>├── linuxbsd/
+</span></span><span class=line><span class=cl>│   ├── godot_linuxbsd.cpp      # main 入口
+</span></span><span class=line><span class=cl>│   ├── os_linuxbsd.h/.cpp
+</span></span><span class=line><span class=cl>│   └── ...
+</span></span><span class=line><span class=cl>├── macos/
+</span></span><span class=line><span class=cl>│   ├── godot_main.m            # main 入口
+</span></span><span class=line><span class=cl>│   ├── os_macos.h/.cpp
+</span></span><span class=line><span class=cl>│   └── ...
+</span></span><span class=line><span class=cl>├── android/
+</span></span><span class=line><span class=cl>│   ├── godot_android.cpp
+</span></span><span class=line><span class=cl>│   ├── os_android.h
+</span></span><span class=line><span class=cl>│   └── ...
+</span></span><span class=line><span class=cl>├── ios/
+</span></span><span class=line><span class=cl>├── web/
+</span></span><span class=line><span class=cl>└── ...
+</span></span></code></pre></div><h3 id=26-main-入口层详细地图>2.6 main/ 入口层详细地图</h3><div class=highlight><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>main/
+</span></span><span class=line><span class=cl>├── main.cpp                    # Main 类：setup/start/iteration/cleanup
+</span></span><span class=line><span class=cl>├── main.h
+</span></span><span class=line><span class=cl>├── main_timer_sync.h/.cpp      # 帧率同步
+</span></span><span class=line><span class=cl>├── main_loop.h                 # （转发到 core/os/main_loop.h）
+</span></span><span class=line><span class=cl>└── performance.h               # Performance 单例
+</span></span></code></pre></div><h3 id=27-modules-模块层部分>2.7 modules/ 模块层（部分）</h3><div class=highlight><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>modules/
+</span></span><span class=line><span class=cl>├── gdscript/                   # GDScript 语言实现
+</span></span><span class=line><span class=cl>│   ├── gdscript.h              # GDScript 类
+</span></span><span class=line><span class=cl>│   ├── gdscript_parser.h       # 解析器
+</span></span><span class=line><span class=cl>│   ├── gdscript_compiler.h     # 编译器
+</span></span><span class=line><span class=cl>│   ├── gdscript_vm.h           # 虚拟机
+</span></span><span class=line><span class=cl>│   ├── gdscript_language.h     # 语言单例
+</span></span><span class=line><span class=cl>│   └── register_types.cpp      # 模块注册
+</span></span><span class=line><span class=cl>├── mono/                       # C# 支持
+</span></span><span class=line><span class=cl>├── navigation/                 # 导航系统实现
+</span></span><span class=line><span class=cl>├── gridmap/                    # 网格地图
+</span></span><span class=line><span class=cl>├── csg/                        # 构造实体几何
+</span></span><span class=line><span class=cl>├── webrtc/                     # WebRTC
+</span></span><span class=line><span class=cl>├── websocket/                  # WebSocket
+</span></span><span class=line><span class=cl>├── xr/                         # XR 实现
+</span></span><span class=line><span class=cl>├── glslang/                    # GLSL 编译器
+</span></span><span class=line><span class=cl>├── msdfgen/                    # 字体 SDF 生成
+</span></span><span class=line><span class=cl>├── astcenc/                    # ASTC 纹理压缩
+</span></span><span class=line><span class=cl>├── basis_universal/            # Basis 纹理压缩
+</span></span><span class=line><span class=cl>├── bullet/                     # Bullet 物理（3D）
+</span></span><span class=line><span class=cl>├── box2d/                      # Box2D 物理（2D）
+</span></span><span class=line><span class=cl>├── register_module_types.h     # 模块注册头文件
+</span></span><span class=line><span class=cl>└── register_module_types.cpp   # 模块注册实现（自动生成）
+</span></span></code></pre></div><hr><h2 id=三核心概念关系图>三、核心概念关系图</h2><blockquote><p><strong>证据等级 A</strong>：以下关系基于源码中的继承关系与包含关系绘制。</p></blockquote><h3 id=31-类继承关系总览>3.1 类继承关系总览</h3><div class=highlight><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>                    ┌─────────────┐
+</span></span><span class=line><span class=cl>                    │   Object    │  ← 所有可暴露给脚本的类的根基类
+</span></span><span class=line><span class=cl>                    │ (core/object)│     core/object/object.h:60
+</span></span><span class=line><span class=cl>                    └──────┬──────┘
+</span></span><span class=line><span class=cl>                           │
+</span></span><span class=line><span class=cl>            ┌──────────────┼──────────────┐
+</span></span><span class=line><span class=cl>            │              │              │
+</span></span><span class=line><span class=cl>     ┌──────▼──────┐ ┌─────▼──────┐ ┌────▼─────────┐
+</span></span><span class=line><span class=cl>     │ RefCounted  │ │   Node     │ │  其他 Object  │
+</span></span><span class=line><span class=cl>     │(ref_counted)│ │ (scene/    │ │  (MainLoop,   │
+</span></span><span class=line><span class=cl>     │  .h:42      │ │  main/node)│ │   Server...)  │
+</span></span><span class=line><span class=cl>     └──────┬──────┘ └─────┬──────┘ └──────────────┘
+</span></span><span class=line><span class=cl>            │              │
+</span></span><span class=line><span class=cl>     ┌──────▼──────┐ ┌─────▼──────────┐
+</span></span><span class=line><span class=cl>     │  Resource   │ │  CanvasItem    │
+</span></span><span class=line><span class=cl>     │(io/resource)│ │ (scene/main/   │
+</span></span><span class=line><span class=cl>     │             │ │  canvas_item)  │
+</span></span><span class=line><span class=cl>     └──────┬──────┘ └───────┬────────┘
+</span></span><span class=line><span class=cl>            │                │
+</span></span><span class=line><span class=cl>     ┌──────┴──────┐  ┌──────┼──────────┐
+</span></span><span class=line><span class=cl>     │ Texture     │  │      │           │
+</span></span><span class=line><span class=cl>     │ Material    │ ┌▼────┐ ┌▼──────┐  │
+</span></span><span class=line><span class=cl>     │ Mesh        │ │Node2D│ │Control│  │
+</span></span><span class=line><span class=cl>     │ Font        │ │      │ │       │  │
+</span></span><span class=line><span class=cl>     │ ...         │ └──────┘ └───────┘  │
+</span></span><span class=line><span class=cl>     └─────────────┘                     │
+</span></span><span class=line><span class=cl>                              ┌──────────▼┐
+</span></span><span class=line><span class=cl>                              │  Node3D   │
+</span></span><span class=line><span class=cl>                              │           │
+</span></span><span class=line><span class=cl>                              └───────────┘
+</span></span></code></pre></div><h3 id=32-variant-类型系统>3.2 Variant 类型系统</h3><div class=highlight><pre tabindex=0 class=chroma><code class=language-gdscript3 data-lang=gdscript3><span class=line><span class=cl><span class=n>Variant</span><span class=err>（</span><span class=n>core</span><span class=o>/</span><span class=n>variant</span><span class=o>/</span><span class=n>variant</span><span class=o>.</span><span class=n>h</span><span class=p>:</span><span class=mi>94</span><span class=err>）</span>
+</span></span><span class=line><span class=cl><span class=err>├──</span> <span class=n>Type</span> <span class=err>枚举（</span><span class=mi>27</span> <span class=err>种类型，</span><span class=n>variant</span><span class=o>.</span><span class=n>h</span><span class=p>:</span><span class=mi>97</span><span class=o>-</span><span class=mi>147</span><span class=err>）</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>├──</span> <span class=err>原子类型：</span><span class=n>NIL</span><span class=p>,</span> <span class=n>BOOL</span><span class=p>,</span> <span class=n>INT</span><span class=p>,</span> <span class=n>FLOAT</span><span class=p>,</span> <span class=n>STRING</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>├──</span> <span class=err>数学类型：</span><span class=n>VECTOR2</span><span class=o>/</span><span class=mi>2</span><span class=n>I</span><span class=p>,</span> <span class=n>RECT2</span><span class=o>/</span><span class=mi>2</span><span class=n>I</span><span class=p>,</span> <span class=n>VECTOR3</span><span class=o>/</span><span class=mi>3</span><span class=n>I</span><span class=p>,</span> <span class=n>TRANSFORM2D</span><span class=p>,</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>│</span>             <span class=n>VECTOR4</span><span class=o>/</span><span class=mi>4</span><span class=n>I</span><span class=p>,</span> <span class=n>PLANE</span><span class=p>,</span> <span class=n>QUATERNION</span><span class=p>,</span> <span class=ne>AABB</span><span class=p>,</span> <span class=n>BASIS</span><span class=p>,</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>│</span>             <span class=n>TRANSFORM3D</span><span class=p>,</span> <span class=n>PROJECTION</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>├──</span> <span class=err>混合类型：</span><span class=n>COLOR</span><span class=p>,</span> <span class=n>STRING_NAME</span><span class=p>,</span> <span class=n>NODE_PATH</span><span class=p>,</span> <span class=ne>RID</span><span class=p>,</span> <span class=n>OBJECT</span><span class=p>,</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>│</span>             <span class=n>CALLABLE</span><span class=p>,</span> <span class=n>SIGNAL</span><span class=p>,</span> <span class=n>DICTIONARY</span><span class=p>,</span> <span class=n>ARRAY</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>└──</span> <span class=err>打包数组：</span><span class=n>PACKED_BYTE</span><span class=o>/</span><span class=n>INT32</span><span class=o>/</span><span class=n>INT64</span><span class=o>/</span><span class=n>FLOAT32</span><span class=o>/</span><span class=n>FLOAT64</span><span class=o>/</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>                 <span class=n>STRING</span><span class=o>/</span><span class=n>VECTOR2</span><span class=o>/</span><span class=n>VECTOR3</span><span class=o>/</span><span class=n>COLOR</span><span class=o>/</span><span class=n>VECTOR4_ARRAY</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>
+</span></span><span class=line><span class=cl><span class=err>├──</span> <span class=err>内部存储：</span><span class=n>union</span> <span class=n>_data</span><span class=err>（</span><span class=n>variant</span><span class=o>.</span><span class=n>h</span><span class=p>:</span><span class=mi>255</span><span class=o>-</span><span class=mi>267</span><span class=err>）</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>├──</span> <span class=ne>bool</span> <span class=n>_bool</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>├──</span> <span class=n>int64_t</span> <span class=n>_int</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>├──</span> <span class=n>double</span> <span class=n>_float</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>├──</span> <span class=n>Transform2D</span> <span class=o>*</span><span class=n>_transform2d</span>  <span class=err>←</span> <span class=err>堆分配的大类型用指针</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>├──</span> <span class=ne>AABB</span> <span class=o>*</span><span class=n>_aabb</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>├──</span> <span class=n>Basis</span> <span class=o>*</span><span class=n>_basis</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>├──</span> <span class=n>Transform3D</span> <span class=o>*</span><span class=n>_transform3d</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>├──</span> <span class=n>Projection</span> <span class=o>*</span><span class=n>_projection</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>├──</span> <span class=n>PackedArrayRefBase</span> <span class=o>*</span><span class=n>packed_array</span>  <span class=err>←</span> <span class=err>打包数组用引用计数对象</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>├──</span> <span class=n>void</span> <span class=o>*</span><span class=n>_ptr</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>└──</span> <span class=n>uint8_t</span> <span class=n>_mem</span><span class=p>[</span><span class=o>...</span><span class=p>]</span>  <span class=err>←</span> <span class=n>ObjData</span> <span class=err>内联存储（含</span> <span class=ne>Object</span><span class=o>*</span> <span class=o>+</span> <span class=n>refcount</span><span class=err>）</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>
+</span></span><span class=line><span class=cl><span class=err>└──</span> <span class=n>needs_deinit</span> <span class=err>表（</span><span class=n>variant</span><span class=o>.</span><span class=n>h</span><span class=p>:</span><span class=mi>273</span><span class=o>-</span><span class=mi>317</span><span class=err>）</span>
+</span></span><span class=line><span class=cl>    <span class=err>└──</span> <span class=err>编译期常量表，标记哪些类型需要析构（避免运行时判断）</span>
+</span></span></code></pre></div><h3 id=33-classdb-注册机制>3.3 ClassDB 注册机制</h3><div class=highlight><pre tabindex=0 class=chroma><code class=language-gdscript3 data-lang=gdscript3><span class=line><span class=cl><span class=n>ClassDB</span><span class=err>（</span><span class=n>core</span><span class=o>/</span><span class=n>object</span><span class=o>/</span><span class=n>class_db</span><span class=o>.</span><span class=n>h</span><span class=err>）</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>
+</span></span><span class=line><span class=cl><span class=err>├──</span> <span class=err>静态数据结构</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>├──</span> <span class=n>HashMap</span><span class=o>&lt;</span><span class=n>StringName</span><span class=p>,</span> <span class=n>ClassInfo</span><span class=o>&gt;</span> <span class=n>classes</span>  <span class=err>←</span> <span class=err>全局类注册表</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>└──</span> <span class=n>ClassInfo</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>       <span class=err>├──</span> <span class=n>StringName</span> <span class=n>name</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>       <span class=err>├──</span> <span class=n>StringName</span> <span class=n>parent_name</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>       <span class=err>├──</span> <span class=n>ClassInfo</span> <span class=o>*</span><span class=n>parent_ptr</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>       <span class=err>├──</span> <span class=n>HashMap</span><span class=o>&lt;</span><span class=n>StringName</span><span class=p>,</span> <span class=n>MethodBind</span><span class=o>*&gt;</span> <span class=n>method_map</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>       <span class=err>├──</span> <span class=n>HashMap</span><span class=o>&lt;</span><span class=n>StringName</span><span class=p>,</span> <span class=n>PropertySetGet</span><span class=o>&gt;</span> <span class=n>property_setget</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>       <span class=err>├──</span> <span class=n>HashMap</span><span class=o>&lt;</span><span class=n>StringName</span><span class=p>,</span> <span class=n>Variant</span><span class=o>&gt;</span> <span class=n>constant_map</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>       <span class=err>├──</span> <span class=n>HashMap</span><span class=o>&lt;</span><span class=n>StringName</span><span class=p>,</span> <span class=n>Signal</span><span class=o>&gt;</span> <span class=n>signal_map</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>       <span class=err>└──</span> <span class=n>List</span><span class=o>&lt;</span><span class=n>PropertyInfo</span><span class=o>&gt;</span> <span class=n>property_list</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>
+</span></span><span class=line><span class=cl><span class=err>├──</span> <span class=err>注册宏（在类定义中使用）</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>├──</span> <span class=n>GDCLASS</span><span class=p>(</span><span class=n>ClassName</span><span class=p>,</span> <span class=n>ParentName</span><span class=p>)</span>       <span class=err>←</span> <span class=err>普通类</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>├──</span> <span class=n>GDREGISTER_CLASS</span><span class=p>(</span><span class=n>ClassName</span><span class=p>)</span>          <span class=err>←</span> <span class=err>注册到</span> <span class=n>ClassDB</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>├──</span> <span class=n>GDREGISTER_VIRTUAL_CLASS</span><span class=p>(</span><span class=n>ClassName</span><span class=p>)</span>  <span class=err>←</span> <span class=err>虚拟类（不可实例化）</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>├──</span> <span class=n>GDREGISTER_ABSTRACT_CLASS</span><span class=p>(</span><span class=n>ClassName</span><span class=p>)</span> <span class=err>←</span> <span class=err>抽象类</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>   <span class=err>└──</span> <span class=n>GDREGISTER_INTERNAL_CLASS</span><span class=p>(</span><span class=n>ClassName</span><span class=p>)</span> <span class=err>←</span> <span class=err>内部类</span>
+</span></span><span class=line><span class=cl><span class=err>│</span>
+</span></span><span class=line><span class=cl><span class=err>└──</span> <span class=err>绑定方法</span>
+</span></span><span class=line><span class=cl>    <span class=err>├──</span> <span class=n>ClassDB</span><span class=p>::</span><span class=n>bind_method</span><span class=p>(</span><span class=n>D_METHOD</span><span class=p>(</span><span class=s2>&#34;name&#34;</span><span class=p>,</span> <span class=n>args</span><span class=o>...</span><span class=p>),</span> <span class=o>&amp;</span><span class=n>Class</span><span class=p>::</span><span class=n>method</span><span class=p>)</span>
+</span></span><span class=line><span class=cl>    <span class=err>├──</span> <span class=n>ClassDB</span><span class=p>::</span><span class=n>bind_signal</span><span class=p>(</span><span class=n>D_METHOD</span><span class=p>(</span><span class=s2>&#34;signal_name&#34;</span><span class=p>),</span> <span class=o>...</span><span class=p>)</span>
+</span></span><span class=line><span class=cl>    <span class=err>├──</span> <span class=n>ClassDB</span><span class=p>::</span><span class=n>add_property</span><span class=p>(</span><span class=n>Class</span><span class=p>,</span> <span class=n>PropertyInfo</span><span class=p>,</span> <span class=n>setter</span><span class=p>,</span> <span class=n>getter</span><span class=p>)</span>
+</span></span><span class=line><span class=cl>    <span class=err>└──</span> <span class=n>ClassDB</span><span class=p>::</span><span class=n>bind_integer_constant</span><span class=p>(</span><span class=n>Class</span><span class=p>,</span> <span class=s2>&#34;ENUM_NAME&#34;</span><span class=p>,</span> <span class=n>value</span><span class=p>)</span>
+</span></span></code></pre></div><h3 id=34-rid-句柄系统>3.4 RID 句柄系统</h3><div class=highlight><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>RID（core/templates/rid.h）
+</span></span><span class=line><span class=cl>│
+</span></span><span class=line><span class=cl>├── 数据结构（rid.h:42-50）
+</span></span><span class=line><span class=cl>│   └── uint64_t _id  ← 64 位句柄
+</span></span><span class=line><span class=cl>│       ├── 高 32 位：owner 索引（标识哪个 RID_Owner）
+</span></span><span class=line><span class=cl>│       └── 低 32 位：对象索引（在 owner 内的索引）
+</span></span><span class=line><span class=cl>│
+</span></span><span class=line><span class=cl>├── RID_Owner&lt;T&gt;（core/templates/rid_owner.h）
+</span></span><span class=line><span class=cl>│   ├── 内部使用 RID_Alloc&lt;T&gt;
+</span></span><span class=line><span class=cl>│   ├── RID make_rid(T *p_object)      ← 注册对象，返回 RID
+</span></span><span class=line><span class=cl>│   ├── T *get_or_null(RID p_rid)      ← 通过 RID 取回对象指针
+</span></span><span class=line><span class=cl>│   ├── void free(RID p_rid)           ← 释放
+</span></span><span class=line><span class=cl>│   └── owns(RID p_rid)                ← 判断是否归属
+</span></span><span class=line><span class=cl>│
+</span></span><span class=line><span class=cl>└── 使用模式（以 RenderingServer 为例）
+</span></span><span class=line><span class=cl>    RenderingServer::texture_2d_create()
+</span></span><span class=line><span class=cl>        → 内部 RenderingDevice 创建 GPU 资源
+</span></span><span class=line><span class=cl>        → RID_Owner&lt;Texture&gt; 注册 Texture 对象
+</span></span><span class=line><span class=cl>        → 返回 RID 给上层
+</span></span><span class=line><span class=cl>    上层只持有 RID，不直接访问 Texture*
+</span></span><span class=line><span class=cl>    → 解耦上层与底层实现
+</span></span></code></pre></div><h3 id=35-signal--callable-系统>3.5 Signal / Callable 系统</h3><div class=highlight><pre tabindex=0 class=chroma><code class=language-gdscript3 data-lang=gdscript3><span class=line><span class=cl><span class=n>Signal</span><span class=err>（</span><span class=n>core</span><span class=o>/</span><span class=n>variant</span><span class=o>/</span><span class=n>callable</span><span class=o>.</span><span class=n>h</span><span class=p>:</span><span class=mi>178</span><span class=err>）</span>
+</span></span><span class=line><span class=cl><span class=err>├──</span> <span class=ne>Object</span> <span class=o>*</span><span class=n>object</span>
+</span></span><span class=line><span class=cl><span class=err>└──</span> <span class=n>StringName</span> <span class=n>name</span>
+</span></span><span class=line><span class=cl>    <span class=err>└──</span> <span class=err>代表</span><span class=s2>&#34;某对象的某信号&#34;</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=n>Callable</span><span class=err>（</span><span class=n>core</span><span class=o>/</span><span class=n>variant</span><span class=o>/</span><span class=n>callable</span><span class=o>.</span><span class=n>h</span><span class=p>:</span><span class=mi>46</span><span class=err>）</span>
+</span></span><span class=line><span class=cl><span class=err>├──</span> <span class=ne>Object</span> <span class=o>*</span><span class=n>object</span>
+</span></span><span class=line><span class=cl><span class=err>├──</span> <span class=n>StringName</span> <span class=n>method</span>
+</span></span><span class=line><span class=cl><span class=err>└──</span> <span class=err>可选：</span><span class=n>CallableCustom</span> <span class=o>*</span><span class=n>custom</span>  <span class=err>←</span> <span class=err>用于</span> <span class=n>lambda</span><span class=err>、绑定参数等</span>
+</span></span><span class=line><span class=cl>    <span class=err>└──</span> <span class=err>代表</span><span class=s2>&#34;某对象的某方法&#34;</span><span class=err>或</span><span class=s2>&#34;自定义可调用体&#34;</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=err>连接关系（存储在</span> <span class=ne>Object</span><span class=p>::</span><span class=n>signal_map</span> <span class=err>中）</span>
+</span></span><span class=line><span class=cl><span class=ne>Object</span><span class=p>::</span><span class=n>signal_map</span> <span class=p>:</span> <span class=n>HashMap</span><span class=o>&lt;</span><span class=n>StringName</span><span class=p>,</span> <span class=n>SignalData</span><span class=o>&gt;</span>
+</span></span><span class=line><span class=cl><span class=err>└──</span> <span class=n>SignalData</span>
+</span></span><span class=line><span class=cl>    <span class=err>├──</span> <span class=n>HashMap</span><span class=o>&lt;</span><span class=n>Callable</span><span class=p>,</span> <span class=n>Slot</span><span class=o>&gt;</span> <span class=n>slot_map</span>  <span class=err>←</span> <span class=err>该信号的所有连接</span>
+</span></span><span class=line><span class=cl>    <span class=err>└──</span> <span class=n>Slot</span>
+</span></span><span class=line><span class=cl>        <span class=err>├──</span> <span class=n>Connection</span> <span class=n>conn</span>
+</span></span><span class=line><span class=cl>        <span class=err>│</span>   <span class=err>├──</span> <span class=n>Callable</span> <span class=n>callable</span>
+</span></span><span class=line><span class=cl>        <span class=err>│</span>   <span class=err>└──</span> <span class=n>uint32_t</span> <span class=n>flags</span>  <span class=err>←</span> <span class=n>CONNECT_ONE_SHOT</span> <span class=o>/</span> <span class=n>DEFERRED</span> <span class=o>/</span> <span class=n>PERSIST</span>
+</span></span><span class=line><span class=cl>        <span class=err>└──</span> <span class=o>...</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=err>发射流程（</span><span class=ne>Object</span><span class=p>::</span><span class=n>emit_signalp</span><span class=err>，</span><span class=n>object</span><span class=o>.</span><span class=n>cpp</span><span class=p>:</span><span class=mi>1256</span><span class=err>）</span>
+</span></span><span class=line><span class=cl><span class=mf>1.</span> <span class=err>检查</span> <span class=n>_block_signals</span>
+</span></span><span class=line><span class=cl><span class=mf>2.</span> <span class=err>加锁（</span><span class=n>ObjectSignalLock</span><span class=err>）</span>
+</span></span><span class=line><span class=cl><span class=mf>3.</span> <span class=err>查找</span> <span class=n>signal_map</span><span class=p>[</span><span class=n>p_name</span><span class=p>]</span>
+</span></span><span class=line><span class=cl><span class=mf>4.</span> <span class=err>复制</span> <span class=n>slot</span> <span class=err>列表到栈（≤</span><span class=mi>5</span> <span class=err>个）或堆（</span><span class=o>&gt;</span><span class=mi>5</span> <span class=err>个）</span>
+</span></span><span class=line><span class=cl><span class=mf>5.</span> <span class=err>解锁</span>
+</span></span><span class=line><span class=cl><span class=mf>6.</span> <span class=err>遍历调用每个</span> <span class=n>Callable</span>
+</span></span></code></pre></div><h3 id=36-node--scenetree-生命周期>3.6 Node / SceneTree 生命周期</h3><div class=highlight><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>SceneTree（scene/main/scene_tree.h:89）
+</span></span><span class=line><span class=cl>├── 继承 MainLoop
+</span></span><span class=line><span class=cl>├── 持有 root: Window（根视口）
+</span></span><span class=line><span class=cl>├── 维护节点树（树形结构）
+</span></span><span class=line><span class=cl>│
+</span></span><span class=line><span class=cl>├── 主循环（继承自 MainLoop）
+</span></span><span class=line><span class=cl>│   ├── initialize()           ← 启动时调用
+</span></span><span class=line><span class=cl>│   ├── process(time)          ← 每帧调用
+</span></span><span class=line><span class=cl>│   │   ├── _process 通知
+</span></span><span class=line><span class=cl>│   │   └── 物理处理
+</span></span><span class=line><span class=cl>│   ├── physics_process(time)  ← 每物理帧调用
+</span></span><span class=line><span class=cl>│   │   └── _physics_process 通知
+</span></span><span class=line><span class=cl>│   └── finalize()             ← 退出时调用
+</span></span><span class=line><span class=cl>│
+</span></span><span class=line><span class=cl>└── Node 通知（Node::NOTIFICATION_*）
+</span></span><span class=line><span class=cl>    ├── POSTINITIALIZE (0)     ← 构造后（Object 级）
+</span></span><span class=line><span class=cl>    ├── PREDELETE (1)          ← 删除前（Object 级）
+</span></span><span class=line><span class=cl>    ├── ENTER_TREE (10)        ← 进入场景树
+</span></span><span class=line><span class=cl>    ├── EXIT_TREE (11)         ← 离开场景树
+</span></span><span class=line><span class=cl>    ├── READY (13)             ← 节点就绪（子节点全部 ENTER_TREE 后）
+</span></span><span class=line><span class=cl>    ├── PROCESS (20)           ← 每帧
+</span></span><span class=line><span class=cl>    ├── PHYSICS_PROCESS (24)   ← 每物理帧
+</span></span><span class=line><span class=cl>    ├── PARENTED (18)          ← 被设置父节点
+</span></span><span class=line><span class=cl>    ├── UNPARENTED (19)        ← 被移除父节点
+</span></span><span class=line><span class=cl>    ├── DRAG_BEGIN/END         ← 拖拽
+</span></span><span class=line><span class=cl>    ├── PATH_CHANGED           ← 路径变化
+</span></span><span class=line><span class=cl>    ├── CHILD_ORDER_CHANGED    ← 子节点顺序变化
+</span></span><span class=line><span class=cl>    └── ...
+</span></span></code></pre></div><hr><h2 id=四学习路线总览>四、学习路线总览</h2><blockquote><p><strong>证据等级 D</strong>：以下学习路线为作者基于源码结构总结的推荐阅读顺序。</p></blockquote><h3 id=41-八阶段学习路径>4.1 八阶段学习路径</h3><div class=highlight><pre tabindex=0 class=chroma><code class=language-gdscript3 data-lang=gdscript3><span class=line><span class=cl><span class=err>阶段</span> <span class=mi>1</span><span class=err>：建立全局认知（</span><span class=mi>1</span><span class=o>-</span><span class=mi>2</span> <span class=err>天）</span>
+</span></span><span class=line><span class=cl><span class=err>├──</span> <span class=err>阅读</span> <span class=mi>00</span><span class=o>-</span><span class=n>README</span><span class=o>.</span><span class=n>md</span><span class=err>（本文档）</span>
+</span></span><span class=line><span class=cl><span class=err>├──</span> <span class=err>阅读</span> <span class=mi>01</span><span class=o>-</span><span class=err>总体架构</span><span class=o>.</span><span class=n>md</span>
+</span></span><span class=line><span class=cl><span class=err>└──</span> <span class=err>目标：理解七大目录职责与依赖关系</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=err>阶段</span> <span class=mi>2</span><span class=err>：掌握核心概念（</span><span class=mi>3</span><span class=o>-</span><span class=mi>5</span> <span class=err>天）</span>
+</span></span><span class=line><span class=cl><span class=err>├──</span> <span class=err>阅读</span> <span class=mi>02</span><span class=o>-</span><span class=err>核心概念</span><span class=o>.</span><span class=n>md</span>
+</span></span><span class=line><span class=cl><span class=err>├──</span> <span class=err>精读</span> <span class=n>core</span><span class=o>/</span><span class=n>object</span><span class=o>/</span><span class=n>object</span><span class=o>.</span><span class=n>h</span>
+</span></span><span class=line><span class=cl><span class=err>├──</span> <span class=err>精读</span> <span class=n>core</span><span class=o>/</span><span class=n>variant</span><span class=o>/</span><span class=n>variant</span><span class=o>.</span><span class=n>h</span>
+</span></span><span class=line><span class=cl><span class=err>├──</span> <span class=err>精读</span> <span class=n>core</span><span class=o>/</span><span class=n>object</span><span class=o>/</span><span class=n>class_db</span><span class=o>.</span><span class=n>h</span>
+</span></span><span class=line><span class=cl><span class=err>└──</span> <span class=err>目标：理解</span> <span class=ne>Object</span><span class=o>/</span><span class=n>Variant</span><span class=o>/</span><span class=n>ClassDB</span> <span class=err>三大支柱</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=err>阶段</span> <span class=mi>3</span><span class=err>：理解启动流程（</span><span class=mi>2</span><span class=o>-</span><span class=mi>3</span> <span class=err>天）</span>
+</span></span><span class=line><span class=cl><span class=err>├──</span> <span class=err>阅读</span> <span class=mi>03</span><span class=o>-</span><span class=err>启动流程</span><span class=o>.</span><span class=n>md</span>
+</span></span><span class=line><span class=cl><span class=err>├──</span> <span class=err>精读</span> <span class=n>main</span><span class=o>/</span><span class=n>main</span><span class=o>.</span><span class=n>cpp</span>
+</span></span><span class=line><span class=cl><span class=err>├──</span> <span class=err>精读</span> <span class=n>platform</span><span class=o>/&lt;</span><span class=n>your_platform</span><span class=o>&gt;/</span><span class=n>godot_</span><span class=o>*.</span><span class=n>cpp</span>
+</span></span><span class=line><span class=cl><span class=err>└──</span> <span class=err>目标：能追踪从</span> <span class=n>main</span><span class=p>()</span> <span class=err>到第一帧渲染的完整链路</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=err>阶段</span> <span class=mi>4</span><span class=err>：深入服务器架构（</span><span class=mi>3</span><span class=o>-</span><span class=mi>5</span> <span class=err>天）</span>
+</span></span><span class=line><span class=cl><span class=err>├──</span> <span class=err>阅读</span> <span class=mi>04</span><span class=o>-</span><span class=err>服务器架构</span><span class=o>.</span><span class=n>md</span>
+</span></span><span class=line><span class=cl><span class=err>├──</span> <span class=err>精读</span> <span class=n>servers</span><span class=o>/</span><span class=n>rendering</span><span class=o>/</span><span class=n>rendering_server</span><span class=o>.</span><span class=n>h</span>
+</span></span><span class=line><span class=cl><span class=err>├──</span> <span class=err>精读</span> <span class=n>servers</span><span class=o>/</span><span class=n>physics_2d</span><span class=o>/</span><span class=n>physics_server_2d</span><span class=o>.</span><span class=n>h</span>
+</span></span><span class=line><span class=cl><span class=err>├──</span> <span class=err>精读</span> <span class=n>core</span><span class=o>/</span><span class=n>templates</span><span class=o>/</span><span class=n>rid_owner</span><span class=o>.</span><span class=n>h</span>
+</span></span><span class=line><span class=cl><span class=err>└──</span> <span class=err>目标：理解</span> <span class=n>Server</span><span class=o>/</span><span class=ne>RID</span><span class=o>/</span><span class=n>Backend</span> <span class=err>三层抽象</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=err>阶段</span> <span class=mi>5</span><span class=err>：追踪调用链（</span><span class=mi>3</span><span class=o>-</span><span class=mi>5</span> <span class=err>天）</span>
+</span></span><span class=line><span class=cl><span class=err>├──</span> <span class=err>阅读</span> <span class=mi>05</span><span class=o>-</span><span class=err>调用链案例</span><span class=o>.</span><span class=n>md</span>
+</span></span><span class=line><span class=cl><span class=err>├──</span> <span class=err>选择</span> <span class=mi>1</span><span class=o>-</span><span class=mi>2</span> <span class=err>个案例深入追踪</span>
+</span></span><span class=line><span class=cl><span class=err>└──</span> <span class=err>目标：能独立追踪任意功能的调用链</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=err>阶段</span> <span class=mi>6</span><span class=err>：学习</span> <span class=n>C</span><span class=o>++</span> <span class=err>技巧（</span><span class=mi>2</span><span class=o>-</span><span class=mi>3</span> <span class=err>天）</span>
+</span></span><span class=line><span class=cl><span class=err>├──</span> <span class=err>阅读</span> <span class=mi>06</span><span class=o>-</span><span class=n>C</span><span class=o>++</span><span class=err>技术分析</span><span class=o>.</span><span class=n>md</span>
+</span></span><span class=line><span class=cl><span class=err>├──</span> <span class=err>在源码中搜索对应模式</span>
+</span></span><span class=line><span class=cl><span class=err>└──</span> <span class=err>目标：掌握</span> <span class=n>Godot</span> <span class=err>的</span> <span class=n>C</span><span class=o>++</span> <span class=err>工程范式</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=err>阶段</span> <span class=mi>7</span><span class=err>：理解扩展机制（</span><span class=mi>2</span><span class=o>-</span><span class=mi>3</span> <span class=err>天）</span>
+</span></span><span class=line><span class=cl><span class=err>├──</span> <span class=err>阅读</span> <span class=mi>07</span><span class=o>-</span><span class=err>模块系统与扩展</span><span class=o>.</span><span class=n>md</span>
+</span></span><span class=line><span class=cl><span class=err>├──</span> <span class=err>精读</span> <span class=n>modules</span><span class=o>/</span><span class=n>gdscript</span><span class=o>/</span><span class=n>register_types</span><span class=o>.</span><span class=n>cpp</span>
+</span></span><span class=line><span class=cl><span class=err>├──</span> <span class=err>尝试编写一个简单模块</span>
+</span></span><span class=line><span class=cl><span class=err>└──</span> <span class=err>目标：能扩展引擎功能</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=err>阶段</span> <span class=mi>8</span><span class=err>：形成完整认知（持续）</span>
+</span></span><span class=line><span class=cl><span class=err>├──</span> <span class=err>阅读</span> <span class=mi>08</span><span class=o>-</span><span class=err>源码阅读路线</span><span class=o>.</span><span class=n>md</span>
+</span></span><span class=line><span class=cl><span class=err>├──</span> <span class=err>持续阅读感兴趣的具体模块</span>
+</span></span><span class=line><span class=cl><span class=err>└──</span> <span class=err>目标：成为</span> <span class=n>Godot</span> <span class=err>源码贡献者</span>
+</span></span></code></pre></div><h3 id=42-推荐的源码阅读工具>4.2 推荐的源码阅读工具</h3><table><thead><tr><th>工具</th><th>用途</th><th>推荐度</th></tr></thead><tbody><tr><td>VS Code + C/C++ + clangd</td><td>代码导航、跳转、补全</td><td>★★★★★</td></tr><tr><td>SourceTrail / Understand</td><td>可视化调用关系</td><td>★★★★</td></tr><tr><td>Doxygen</td><td>生成类继承图</td><td>★★★</td></tr><tr><td><code>grep</code> / <code>rg</code></td><td>快速搜索</td><td>★★★★★</td></tr><tr><td>GDB / LLDB</td><td>运行时调试</td><td>★★★★★</td></tr><tr><td>Valgrind</td><td>内存分析</td><td>★★★</td></tr></tbody></table><h3 id=43-构建源码以辅助阅读>4.3 构建源码以辅助阅读</h3><blockquote><p><strong>证据等级 C</strong>：基于 Godot 官方构建文档。</p></blockquote><div class=highlight><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl><span class=c1># 1. 克隆源码</span>
+</span></span><span class=line><span class=cl>git clone https://github.com/godotengine/godot.git
+</span></span><span class=line><span class=cl><span class=nb>cd</span> godot
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=c1># 2. 生成构建系统（以 Linux 为例）</span>
+</span></span><span class=line><span class=cl>scons <span class=nv>platform</span><span class=o>=</span>linuxbsd <span class=nv>target</span><span class=o>=</span>editor <span class=nv>dev_build</span><span class=o>=</span>yes
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=c1># 3. 生成 compile_commands.json（供 clangd 使用）</span>
+</span></span><span class=line><span class=cl>scons <span class=nv>platform</span><span class=o>=</span>linuxbsd <span class=nv>target</span><span class=o>=</span>editor <span class=nv>dev_build</span><span class=o>=</span>yes <span class=nv>compiledb</span><span class=o>=</span>yes
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=c1># 4. 运行编辑器</span>
+</span></span><span class=line><span class=cl>./bin/godot.linuxbsd.editor.dev.x86_64
+</span></span></code></pre></div><p><code>dev_build=yes</code> 会启用调试符号与断言，便于源码阅读时理解运行时行为。</p><hr><h2 id=五文档使用约定>五、文档使用约定</h2><h3 id=51-证据等级标注>5.1 证据等级标注</h3><p>每个关键结论后会标注证据等级，例如：</p><blockquote><p>Object 类定义于 <code>core/object/object.h:60</code>，是所有可暴露给脚本的对象的根基类。<strong>[证据等级 A]</strong></p></blockquote><p>读者可据此判断结论的可靠性，并按图索骥验证源码。</p><h3 id=52-源码引用格式>5.2 源码引用格式</h3><p>源码引用统一采用以下格式：</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>文件路径:行号
+</span></span></code></pre></div><p>例如：<code>core/object/object.h:60</code> 表示 <code>core/object/object.h</code> 文件第 60 行。</p><h3 id=53-代码片段引用>5.3 代码片段引用</h3><p>引用源码片段时，会标注来源并保留原始注释：</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=c1>// 来源：core/object/object.h:727-733
+</span></span></span><span class=line><span class=cl><span class=n>_FORCE_INLINE_</span> <span class=kt>void</span> <span class=nf>notification</span><span class=p>(</span><span class=kt>int</span> <span class=n>p_notification</span><span class=p>,</span> <span class=kt>bool</span> <span class=n>p_reversed</span> <span class=o>=</span> <span class=nb>false</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=k>if</span> <span class=p>(</span><span class=n>p_reversed</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=n>_notification_backward</span><span class=p>(</span><span class=n>p_notification</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=p>}</span> <span class=k>else</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=n>_notification_forward</span><span class=p>(</span><span class=n>p_notification</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=p>}</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></div><h3 id=54-mermaid-图表>5.4 Mermaid 图表</h3><p>复杂流程使用 Mermaid 图表绘制，支持在 GitHub / VS Code / Typora 等工具中渲染。</p><h3 id=55-ascii-图表>5.5 ASCII 图表</h3><p>简单的结构关系使用 ASCII 字符画，确保在任何环境下可读。</p><hr><h2 id=六版本与时效性说明>六、版本与时效性说明</h2><blockquote><p><strong>证据等级 A</strong>：本教材基于以下版本验证。</p></blockquote><ul><li><strong>源码版本</strong>：Godot 4.8.dev（master 分支）</li><li><strong>检出日期</strong>：2026-08-26</li><li><strong>关键文件验证状态</strong>：所有引用的文件路径与行号均基于此版本验证</li></ul><p>Godot 引擎处于活跃开发中，源码会持续演进。读者在阅读时请注意：</p><ol><li><strong>行号可能偏移</strong>：随着提交，行号会变化，但文件路径与类名通常稳定</li><li><strong>API 可能调整</strong>：4.x 系列内 API 相对稳定，但 5.0 可能有重大变化</li><li><strong>建议交叉验证</strong>：阅读时打开对应版本的源码进行验证</li></ol><hr><h2 id=七下一步>七、下一步</h2><p>建议从 <a href=./01-%e6%80%bb%e4%bd%93%e6%9e%b6%e6%9e%84.md>01-总体架构.md</a> 开始，建立对 Godot 引擎整体结构的认知。</p><p>如需快速定位特定主题，可使用以下索引：</p><ul><li>想了解 <strong>Object 系统</strong> → <a href=./02-%e6%a0%b8%e5%bf%83%e6%a6%82%e5%bf%b5.md>02-核心概念.md</a></li><li>想了解 <strong>引擎如何启动</strong> → <a href=./03-%e5%90%af%e5%8a%a8%e6%b5%81%e7%a8%8b.md>03-启动流程.md</a></li><li>想了解 <strong>渲染/物理如何工作</strong> → <a href=./04-%e6%9c%8d%e5%8a%a1%e5%99%a8%e6%9e%b6%e6%9e%84.md>04-服务器架构.md</a></li><li>想看 <strong>具体调用链</strong> → <a href=./05-%e8%b0%83%e7%94%a8%e9%93%be%e6%a1%88%e4%be%8b.md>05-调用链案例.md</a></li><li>想学 <strong>C++ 技巧</strong> → <a href=./06-C++%e6%8a%80%e6%9c%af%e5%88%86%e6%9e%90.md>06-C++技术分析.md</a></li><li>想了解 <strong>如何扩展引擎</strong> → <a href=./07-%e6%a8%a1%e5%9d%97%e7%b3%bb%e7%bb%9f%e4%b8%8e%e6%89%a9%e5%b1%95.md>07-模块系统与扩展.md</a></li><li>想要 <strong>完整学习路线</strong> → <a href=./08-%e6%ba%90%e7%a0%81%e9%98%85%e8%af%bb%e8%b7%af%e7%ba%bf.md>08-源码阅读路线.md</a></li></ul></div><footer class=article-footer><span>归档于</span>
+<a href=/categories/godot/>Godot</a></footer></article><aside class="toc glass-panel" aria-label=文章目录><strong>本文目录</strong><nav id=TableOfContents><ul><li><a href=#一教材总览>一、教材总览</a></li><li><a href=#二源码地图source-map>二、源码地图（Source Map）</a><ul><li><a href=#21-顶层目录结构>2.1 顶层目录结构</a></li><li><a href=#22-core-核心库详细地图>2.2 core/ 核心库详细地图</a></li><li><a href=#23-servers-服务器层详细地图>2.3 servers/ 服务器层详细地图</a></li><li><a href=#24-scene-场景层详细地图>2.4 scene/ 场景层详细地图</a></li><li><a href=#25-platform-平台层详细地图>2.5 platform/ 平台层详细地图</a></li><li><a href=#26-main-入口层详细地图>2.6 main/ 入口层详细地图</a></li><li><a href=#27-modules-模块层部分>2.7 modules/ 模块层（部分）</a></li></ul></li><li><a href=#三核心概念关系图>三、核心概念关系图</a><ul><li><a href=#31-类继承关系总览>3.1 类继承关系总览</a></li><li><a href=#32-variant-类型系统>3.2 Variant 类型系统</a></li><li><a href=#33-classdb-注册机制>3.3 ClassDB 注册机制</a></li><li><a href=#34-rid-句柄系统>3.4 RID 句柄系统</a></li><li><a href=#35-signal--callable-系统>3.5 Signal / Callable 系统</a></li><li><a href=#36-node--scenetree-生命周期>3.6 Node / SceneTree 生命周期</a></li></ul></li><li><a href=#四学习路线总览>四、学习路线总览</a><ul><li><a href=#41-八阶段学习路径>4.1 八阶段学习路径</a></li><li><a href=#42-推荐的源码阅读工具>4.2 推荐的源码阅读工具</a></li><li><a href=#43-构建源码以辅助阅读>4.3 构建源码以辅助阅读</a></li></ul></li><li><a href=#五文档使用约定>五、文档使用约定</a><ul><li><a href=#51-证据等级标注>5.1 证据等级标注</a></li><li><a href=#52-源码引用格式>5.2 源码引用格式</a></li><li><a href=#53-代码片段引用>5.3 代码片段引用</a></li><li><a href=#54-mermaid-图表>5.4 Mermaid 图表</a></li><li><a href=#55-ascii-图表>5.5 ASCII 图表</a></li></ul></li><li><a href=#六版本与时效性说明>六、版本与时效性说明</a></li><li><a href=#七下一步>七、下一步</a></li></ul></nav></aside></div></main><footer class=site-footer><div class=footer-inner><p>&copy; 2023–2026 你的名字. 保留所有权利。</p><div class=footer-meta></div></div></footer><script defer src=https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js crossorigin=anonymous></script><script defer src=https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js crossorigin=anonymous></script><script>document.addEventListener("DOMContentLoaded",function(){typeof katex!="undefined"&&document.querySelectorAll(".katex-block[data-math]").forEach(function(e){try{katex.render(e.textContent,e,{displayMode:!0,throwOnError:!1})}catch{}}),typeof renderMathInElement=="function"&&renderMathInElement(document.body,{delimiters:[{left:"$$",right:"$$",display:!0},{left:"\\[",right:"\\]",display:!0},{left:"$",right:"$",display:!1},{left:"\\(",right:"\\)",display:!1}],ignoredTags:["script","noscript","style","textarea","pre","code"],throwOnError:!1})})</script><script src=/js/main.min.d67c76b16258bc785c9a7bda52b7326bf67bb61290c8e66e975ed27a7330b4c9.js integrity="sha256-1nx2sWJYvHhcmnvaUrcya/Z7thKQyOZul17SenMwtMk=" defer></script></body></html>

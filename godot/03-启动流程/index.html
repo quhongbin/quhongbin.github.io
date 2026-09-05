@@ -1,0 +1,555 @@
+<!doctype html><html lang=zh-CN dir=ltr><head><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><meta name=color-scheme content="light dark"><meta name=theme-color content="#08111f" media="(prefers-color-scheme: dark)"><meta name=theme-color content="#fff5e1" media="(prefers-color-scheme: light)"><script>document.documentElement.classList.add("js"),function(){try{var e,t=localStorage.getItem("site-theme");t==="light"||t==="dark"?document.documentElement.setAttribute("data-theme",t):document.documentElement.setAttribute("data-theme",window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"),e=localStorage.getItem("site-palette"),(e==="macos"||e==="github"||e==="gruvbox")&&document.documentElement.setAttribute("data-palette",e)}catch{}}()</script><title>Godot Learning-3 · 我的博客</title><meta name=description content="03 - Godot 启动流程深度解析 源码版本：Godot 4.8.dev（master 分支，2026-08-26） 证据等级：A（除非另行标注）
+1. 模块概述 Godot 引擎的启动流程是一个精心设计的多阶段过程，从操作系统入口点开始，经过类型注册、服务器创建、主场景加载，最终进入主循环。理解启动流程是理解引擎整体运作的关键——它揭示了 Object、ClassDB、Server、Node 等核心概念如何被初始化并组装成一个可运行的引擎实例。
+"><meta name=author content="你的名字"><link rel=canonical href=https://quhongbin.github.io/godot/03-%E5%90%AF%E5%8A%A8%E6%B5%81%E7%A8%8B/><link rel=alternate hreflang=zh-CN href=https://quhongbin.github.io/godot/03-%E5%90%AF%E5%8A%A8%E6%B5%81%E7%A8%8B/><meta property="og:type" content="article"><meta property="og:title" content="Godot Learning-3 · 我的博客"><meta property="og:description" content="03 - Godot 启动流程深度解析 源码版本：Godot 4.8.dev（master 分支，2026-08-26） 证据等级：A（除非另行标注）
+1. 模块概述 Godot 引擎的启动流程是一个精心设计的多阶段过程，从操作系统入口点开始，经过类型注册、服务器创建、主场景加载，最终进入主循环。理解启动流程是理解引擎整体运作的关键——它揭示了 Object、ClassDB、Server、Node 等核心概念如何被初始化并组装成一个可运行的引擎实例。
+"><meta property="og:url" content="https://quhongbin.github.io/godot/03-%E5%90%AF%E5%8A%A8%E6%B5%81%E7%A8%8B/"><meta property="og:site_name" content="我的博客"><link rel=stylesheet href=/css/main.min.40ad2a9c00a93175c79e471a6792f23457c527e9c46cc8ee6e16d300f7bf6674.css integrity="sha256-QK0qnACpMXXHnkcaZ5LyNFfFJ+nEbMjubhbTAPe/ZnQ="><link rel=stylesheet href=/css/site-palettes.min.0f2ed388ed0b74ab72dcd2b144a6a19acbd23a4edca157c36eecdffad3dfe7bf.css integrity="sha256-Dy7TiO0LdKty3NKxRKahmsvSOk7coVfDbuzf+tPf578="><link rel=stylesheet href=/css/code-themes.min.78bd37b0419e6af001a97d6754f5264cacc1413c97b2e5d67033547083130a12.css integrity="sha256-eL03sEGeavABqX1nVPUmTKzBQTyXsuXWcDNUcIMTChI="><link rel=stylesheet href=https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css crossorigin=anonymous><style>:root{--content-width:1400px;--article-width:1100px;--toc-width:250px;--article-pad:clamp(25px, 6vw, 72px)}</style><link rel=icon href=/images/avatar.webp></head><body class=page-kind-page><a class=skip-link href=#main-content>跳到正文</a><div class=site-background aria-hidden=true></div><header class=site-header data-site-header><div class=header-inner><a class=site-brand href=/ aria-label=我的博客><img class=brand-avatar src=/images/avatar.webp alt width=44 height=44>
+<span class=brand-copy><strong>我的博客</strong>
+<small>在代码与生活之间</small>
+</span></a><button class=menu-toggle type=button aria-expanded=false aria-controls=site-navigation data-menu-toggle>
+<span class=menu-toggle-lines aria-hidden=true></span>
+<span class=sr-only>打开或关闭菜单</span></button><nav id=site-navigation class=site-navigation aria-label=主导航 data-navigation><ul class=nav-menu><li><a href=/>首页</a></li><li class="nav-item has-categories" data-categories-item><a href=/posts/ data-categories-trigger aria-haspopup=true>文章</a><ul class=categories-dropdown><li class=categories-all><a href=/posts/>全部文章</a></li><li><a href=/categories/godot/><span class=cat-name>Godot</span>
+<span class=term-count>8</span></a></li></ul></li><li><a href=/notes/>速记</a></li><li><a href=/tags/>标签</a></li><li><a href=/logs/>日志</a></li><li><a href=/about/>关于</a></li></ul><div class=header-social aria-label=社交链接><a href=https://github.com/your-name title=GitHub aria-label=GitHub target=_blank rel="noopener noreferrer"><svg class="icon icon-github" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 .7A11.5 11.5.0 008.36 23.11c.58.11.79-.25.79-.56v-2.23c-3.22.7-3.9-1.37-3.9-1.37-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.71.08-.71 1.17.08 1.78 1.2 1.78 1.2 1.04 1.78 2.72 1.27 3.38.97.1-.75.4-1.27.74-1.56-2.57-.29-5.27-1.28-5.27-5.68.0-1.25.45-2.28 1.19-3.08-.12-.29-.52-1.46.11-3.04.0.0.97-.31 3.16 1.18a10.98 10.98.0 015.76.0c2.19-1.49 3.15-1.18 3.15-1.18.63 1.58.23 2.75.11 3.04.74.8 1.19 1.83 1.19 3.08.0 4.41-2.71 5.38-5.29 5.67.42.36.79 1.07.79 2.16v3.2c0 .31.21.68.8.56A11.5 11.5.0 0012 .7z"/></svg>
+</a><a href=mailto:hello@example.com title=Email aria-label=Email><svg class="icon icon-email" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 4h18a2 2 0 012 2v12a2 2 0 01-2 2H3a2 2 0 01-2-2V6a2 2 0 012-2zm0 2 9 6 9-6H3zm18 12V8.4l-9 6-9-6V18h18z"/></svg></a></div><div class=theme-picker><button class=theme-toggle type=button data-theme-toggle aria-label="切换亮色 / 暗色主题" title="切换亮色 / 暗色主题">
+<svg class="icon icon-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><g stroke-linecap="round"><line x1="12" y1="2.5" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="21.5"/><line x1="2.5" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="21.5" y2="12"/><line x1="5.2" y1="5.2" x2="6.95" y2="6.95"/><line x1="17.05" y1="17.05" x2="18.8" y2="18.8"/><line x1="5.2" y1="18.8" x2="6.95" y2="17.05"/><line x1="17.05" y1="6.95" x2="18.8" y2="5.2"/></g></svg>
+<svg class="icon icon-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 019.5 4a.5.5.0 00-.78-.55 9.5 9.5.0 1011.83 11.83.5.5.0 00-.55-.78z"/></svg></button><div class=palette-menu role=group aria-label=主题配色><strong>主题配色</strong><div class=palette-group-label>亮色</div><button class=palette-option type=button data-palette-value=default data-palette-mode=light>站点默认 · 亮色</button>
+<button class=palette-option type=button data-palette-value=macos data-palette-mode=light>macOS · 亮色</button>
+<button class=palette-option type=button data-palette-value=github data-palette-mode=light>GitHub · 亮色</button>
+<button class=palette-option type=button data-palette-value=gruvbox data-palette-mode=light>Gruvbox · 亮色</button><div class=palette-group-label>暗色</div><button class=palette-option type=button data-palette-value=default data-palette-mode=dark>站点默认 · 暗色</button>
+<button class=palette-option type=button data-palette-value=macos data-palette-mode=dark>macOS · 暗色</button>
+<button class=palette-option type=button data-palette-value=github data-palette-mode=dark>GitHub · 暗色</button>
+<button class=palette-option type=button data-palette-value=gruvbox data-palette-mode=dark>Gruvbox · 暗色</button></div></div><details class=language-switcher><summary aria-label=选择语言><span aria-hidden=true>文/A</span>
+<span>简体中文</span></summary><ul><li><a href=/godot/03-%E5%90%AF%E5%8A%A8%E6%B5%81%E7%A8%8B/ lang=zh-CN aria-current=true>简体中文</a></li></ul></details></nav></div></header><main id=main-content class=site-main><div class=article-layout><article class="article glass-panel reveal"><div class=reading-progress aria-hidden=true><span data-reading-progress></span></div><header class=article-header><a class=back-link href=/godot/>← 返回列表</a><h1>Godot Learning-3</h1><div class=article-meta><time datetime=2026-08-26>August 26, 2026</time>
+<span>阅读约 14 分钟</span>
+<span>6587 字</span></div></header><div class="prose article-content" data-article-content><h1 id=03---godot-启动流程深度解析>03 - Godot 启动流程深度解析</h1><blockquote><p><strong>源码版本</strong>：Godot 4.8.dev（master 分支，2026-08-26）
+<strong>证据等级</strong>：A（除非另行标注）</p></blockquote><hr><h2 id=1-模块概述>1. 模块概述</h2><p>Godot 引擎的启动流程是一个精心设计的多阶段过程，从操作系统入口点开始，经过类型注册、服务器创建、主场景加载，最终进入主循环。理解启动流程是理解引擎整体运作的关键——它揭示了 Object、ClassDB、Server、Node 等核心概念如何被初始化并组装成一个可运行的引擎实例。</p><p>Godot 的启动分为四个明确的阶段：<strong>setup</strong>（基础初始化）、<strong>start</strong>（业务初始化）、<strong>run</strong>（主循环）、<strong>cleanup</strong>（清理）。每个阶段有明确的职责边界，前一个阶段的输出是后一个阶段的输入。这种分阶段设计使得引擎能够在不同阶段处理不同层级的初始化，确保依赖关系正确。</p><p>本章节将从最底层的平台入口点开始，逐层追踪到 SceneTree 的第一帧执行，完整呈现"从 main() 到第一帧"的全过程。</p><hr><h2 id=2-关键文件清单>2. 关键文件清单</h2><blockquote><p><strong>证据等级 A</strong>：以下文件均基于实际检出验证。</p></blockquote><table><thead><tr><th>文件</th><th>行数(约)</th><th>职责</th></tr></thead><tbody><tr><td><code>platform/windows/godot_windows.cpp</code></td><td>~180</td><td>Windows 平台 WinMain 入口</td></tr><tr><td><code>platform/linuxbsd/godot_linuxbsd.cpp</code></td><td>~150</td><td>Linux 平台 main 入口</td></tr><tr><td><code>platform/macos/godot_osx.mm</code></td><td>~150</td><td>macOS 平台 main 入口</td></tr><tr><td><code>main/main.cpp</code></td><td>~5000</td><td>Main 类：setup/start/iteration/cleanup</td></tr><tr><td><code>main/main.h</code></td><td>~100</td><td>Main 类声明</td></tr><tr><td><code>core/register_core_types.cpp</code></td><td>~450</td><td>核心类型注册</td></tr><tr><td><code>servers/register_server_types.cpp</code></td><td>~200</td><td>服务器类型注册</td></tr><tr><td><code>scene/register_scene_types.cpp</code></td><td>~500</td><td>场景类型注册</td></tr><tr><td><code>modules/register_module_types.cpp</code></td><td>~50</td><td>模块类型注册入口</td></tr><tr><td><code>core/os/os.h</code></td><td>~500</td><td>OS 抽象基类</td></tr><tr><td><code>core/os/main_loop.h</code></td><td>~80</td><td>MainLoop 抽象</td></tr><tr><td><code>scene/main/scene_tree.h</code></td><td>~300</td><td>SceneTree 声明</td></tr></tbody></table><hr><h2 id=3-核心数据结构>3. 核心数据结构</h2><h3 id=31-启动阶段总览>3.1 启动阶段总览</h3><div class=highlight><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>┌─────────────────────────────────────────────────────────────────┐
+</span></span><span class=line><span class=cl>│                    Godot 启动流程总览                            │
+</span></span><span class=line><span class=cl>├─────────────────────────────────────────────────────────────────┤
+</span></span><span class=line><span class=cl>│                                                                 │
+</span></span><span class=line><span class=cl>│  阶段 1: SETUP（基础初始化）                                     │
+</span></span><span class=line><span class=cl>│  ┌─────────────────────────────────────────────────────────┐   │
+</span></span><span class=line><span class=cl>│  │ 1. 创建 OS 单例（平台特定）                               │   │
+</span></span><span class=line><span class=cl>│  │ 2. 解析命令行参数                                         │   │
+</span></span><span class=line><span class=cl>│  │ 3. 注册核心类型（register_core_types）                    │   │
+</span></span><span class=line><span class=cl>│  │ 4. 注册服务器类型（register_server_types）                │   │
+</span></span><span class=line><span class=cl>│  │ 5. 注册场景类型（register_scene_types）                   │   │
+</span></span><span class=line><span class=cl>│  │ 6. 注册模块类型（register_module_types）                  │   │
+</span></span><span class=line><span class=cl>│  │ 7. 创建 DisplayServer                                    │   │
+</span></span><span class=line><span class=cl>│  │ 8. 创建 RenderingServer                                  │   │
+</span></span><span class=line><span class=cl>│  │ 9. 创建 PhysicsServer2D/3D                               │   │
+</span></span><span class=line><span class=cl>│  │ 10. 创建 AudioServer                                     │   │
+</span></span><span class=line><span class=cl>│  │ 11. 创建 TextServerManager                               │   │
+</span></span><span class=line><span class=cl>│  │ 12. 加载 ProjectSettings                                 │   │
+</span></span><span class=line><span class=cl>│  └─────────────────────────────────────────────────────────┘   │
+</span></span><span class=line><span class=cl>│                          │                                      │
+</span></span><span class=line><span class=cl>│                          ▼                                      │
+</span></span><span class=line><span class=cl>│  阶段 2: START（业务初始化）                                     │
+</span></span><span class=line><span class=cl>│  ┌─────────────────────────────────────────────────────────┐   │
+</span></span><span class=line><span class=cl>│  │ 1. 创建 InputMap                                         │   │
+</span></span><span class=line><span class=cl>│  │ 2. 创建 TranslationServer                                │   │
+</span></span><span class=line><span class=cl>│  │ 3. 加载主包（main_pack）                                 │   │
+</span></span><span class=line><span class=cl>│  │ 4. 创建 SceneTree（主循环）                               │   │
+</span></span><span class=line><span class=cl>│  │ 5. 加载主场景（main_scene）                               │   │
+</span></span><span class=line><span class=cl>│  │ 6. OS::set_main_loop(scene_tree)                         │   │
+</span></span><span class=line><span class=cl>│  └─────────────────────────────────────────────────────────┘   │
+</span></span><span class=line><span class=cl>│                          │                                      │
+</span></span><span class=line><span class=cl>│                          ▼                                      │
+</span></span><span class=line><span class=cl>│  阶段 3: RUN（主循环）                                           │
+</span></span><span class=line><span class=cl>│  ┌─────────────────────────────────────────────────────────┐   │
+</span></span><span class=line><span class=cl>│  │ 1. main_loop-&gt;initialize()                               │   │
+</span></span><span class=line><span class=cl>│  │ 2. while (!exit):                                        │   │
+</span></span><span class=line><span class=cl>│  │      Main::iteration()                                   │   │
+</span></span><span class=line><span class=cl>│  │        - 处理事件                                         │   │
+</span></span><span class=line><span class=cl>│  │        - 物理模拟                                         │   │
+</span></span><span class=line><span class=cl>│  │        - 场景处理                                         │   │
+</span></span><span class=line><span class=cl>│  │        - 渲染                                             │   │
+</span></span><span class=line><span class=cl>│  │ 3. main_loop-&gt;finalize()                                 │   │
+</span></span><span class=line><span class=cl>│  └─────────────────────────────────────────────────────────┘   │
+</span></span><span class=line><span class=cl>│                          │                                      │
+</span></span><span class=line><span class=cl>│                          ▼                                      │
+</span></span><span class=line><span class=cl>│  阶段 4: CLEANUP（清理）                                         │
+</span></span><span class=line><span class=cl>│  ┌─────────────────────────────────────────────────────────┐   │
+</span></span><span class=line><span class=cl>│  │ 1. 释放 SceneTree                                        │   │
+</span></span><span class=line><span class=cl>│  │ 2. 释放所有服务器                                         │   │
+</span></span><span class=line><span class=cl>│  │ 3. unregister_*_types()                                  │   │
+</span></span><span class=line><span class=cl>│  │ 4. 销毁 OS 单例                                          │   │
+</span></span><span class=line><span class=cl>│  └─────────────────────────────────────────────────────────┘   │
+</span></span><span class=line><span class=cl>│                                                                 │
+</span></span><span class=line><span class=cl>└─────────────────────────────────────────────────────────────────┘
+</span></span></code></pre></div><h3 id=32-main-类结构>3.2 Main 类结构</h3><blockquote><p><strong>证据等级 A</strong>：基于 <code>main/main.h</code> 验证。</p></blockquote><div class=highlight><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=c1>// main/main.h（简化）
+</span></span></span><span class=line><span class=cl><span class=k>class</span> <span class=nc>Main</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=k>static</span> <span class=kt>bool</span> <span class=n>force_quit</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=k>static</span> <span class=n>OS</span> <span class=o>*</span><span class=n>os</span><span class=p>;</span> <span class=c1>// 不直接持有，通过 OS::get_singleton()
+</span></span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=k>public</span><span class=o>:</span>
+</span></span><span class=line><span class=cl>    <span class=k>static</span> <span class=n>Error</span> <span class=n>setup</span><span class=p>(</span><span class=k>const</span> <span class=kt>char</span> <span class=o>*</span><span class=n>execpath</span><span class=p>,</span> <span class=n>uintptr_t</span> <span class=n>p_instance_id</span><span class=p>,</span> <span class=kt>bool</span> <span class=n>p_second_thread</span> <span class=o>=</span> <span class=nb>false</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=k>static</span> <span class=n>Error</span> <span class=nf>start</span><span class=p>(</span><span class=n>uintptr_t</span> <span class=n>p_instance_id</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=k>static</span> <span class=kt>bool</span> <span class=nf>iteration</span><span class=p>(</span><span class=kt>double</span> <span class=n>p_time</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=k>static</span> <span class=kt>void</span> <span class=nf>cleanup</span><span class=p>(</span><span class=kt>bool</span> <span class=n>p_force</span> <span class=o>=</span> <span class=nb>false</span><span class=p>);</span>
+</span></span><span class=line><span class=cl><span class=p>};</span>
+</span></span></code></pre></div><p>Main 是纯静态类，提供四个入口方法，由平台入口点调用。</p><hr><h2 id=4-核心类与职责>4. 核心类与职责</h2><h3 id=41-平台入口点>4.1 平台入口点</h3><p>每个平台有自己的入口文件，负责创建 OS 实例并调用 Main 的方法。以 Windows 为例：</p><blockquote><p><strong>证据等级 A</strong>：基于 <code>platform/windows/godot_windows.cpp</code> 验证。</p></blockquote><div class=highlight><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=c1>// platform/windows/godot_windows.cpp（简化）
+</span></span></span><span class=line><span class=cl><span class=kt>int</span> <span class=nf>widechar_main</span><span class=p>(</span><span class=kt>int</span> <span class=n>argc</span><span class=p>,</span> <span class=kt>wchar_t</span> <span class=o>*</span><span class=n>argv</span><span class=p>[])</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=c1>// 1. 转换参数为 UTF-8
+</span></span></span><span class=line><span class=cl>    <span class=kt>char</span> <span class=o>**</span><span class=n>argv_utf8</span> <span class=o>=</span> <span class=p>...;</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=c1>// 2. 调用 Main::setup
+</span></span></span><span class=line><span class=cl>    <span class=n>Error</span> <span class=n>err</span> <span class=o>=</span> <span class=n>Main</span><span class=o>::</span><span class=n>setup</span><span class=p>(</span><span class=n>argv_utf8</span><span class=p>[</span><span class=mi>0</span><span class=p>],</span> <span class=n>GetCurrentProcessId</span><span class=p>());</span>
+</span></span><span class=line><span class=cl>    <span class=k>if</span> <span class=p>(</span><span class=n>err</span> <span class=o>!=</span> <span class=n>OK</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=k>return</span> <span class=mi>1</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=p>}</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=c1>// 3. 调用 Main::start
+</span></span></span><span class=line><span class=cl>    <span class=n>err</span> <span class=o>=</span> <span class=n>Main</span><span class=o>::</span><span class=n>start</span><span class=p>(</span><span class=n>GetCurrentProcessId</span><span class=p>());</span>
+</span></span><span class=line><span class=cl>    <span class=k>if</span> <span class=p>(</span><span class=n>err</span> <span class=o>!=</span> <span class=n>OK</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=n>Main</span><span class=o>::</span><span class=n>cleanup</span><span class=p>();</span>
+</span></span><span class=line><span class=cl>        <span class=k>return</span> <span class=mi>1</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=p>}</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=c1>// 4. 运行主循环
+</span></span></span><span class=line><span class=cl>    <span class=n>OS_Windows</span> <span class=o>*</span><span class=n>os</span> <span class=o>=</span> <span class=n>OS_Windows</span><span class=o>::</span><span class=n>get_singleton</span><span class=p>();</span>
+</span></span><span class=line><span class=cl>    <span class=k>if</span> <span class=p>(</span><span class=n>os</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=n>os</span><span class=o>-&gt;</span><span class=n>run</span><span class=p>();</span>
+</span></span><span class=line><span class=cl>    <span class=p>}</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=c1>// 5. 清理
+</span></span></span><span class=line><span class=cl>    <span class=n>Main</span><span class=o>::</span><span class=n>cleanup</span><span class=p>();</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=k>return</span> <span class=n>os</span> <span class=o>?</span> <span class=n>os</span><span class=o>-&gt;</span><span class=n>get_exit_code</span><span class=p>()</span> <span class=o>:</span> <span class=mi>0</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=kt>int</span> <span class=nf>main</span><span class=p>(</span><span class=kt>int</span> <span class=n>argc</span><span class=p>,</span> <span class=kt>char</span> <span class=o>**</span><span class=n>argv</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=c1>// 转换为宽字符
+</span></span></span><span class=line><span class=cl>    <span class=kt>wchar_t</span> <span class=o>**</span><span class=n>argv_w</span> <span class=o>=</span> <span class=p>...;</span>
+</span></span><span class=line><span class=cl>    <span class=k>return</span> <span class=n>widechar_main</span><span class=p>(</span><span class=n>argc</span><span class=p>,</span> <span class=n>argv_w</span><span class=p>);</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></div><h3 id=42-os-类>4.2 OS 类</h3><blockquote><p><strong>证据等级 A</strong>：基于 <code>core/os/os.h</code> 验证。</p></blockquote><p><code>OS</code> 是操作系统抽象基类，定义了文件系统、时间、线程、命令行、环境变量等接口。每个平台提供子类（如 <code>OS_Windows</code>、<code>OS_LinuxBSD</code>、<code>OS_OSX</code>）。</p><p>关键方法：</p><ul><li><code>run()</code>：运行主循环（调用 main_loop 的 initialize/process/finalize）</li><li><code>get_main_loop()</code> / <code>set_main_loop()</code>：管理主循环</li><li><code>get_singleton()</code>：获取单例</li><li><code>initialize()</code> / <code>finalize()</code>：平台特定初始化/清理</li><li><code>get_data_dir()</code> / <code>get_config_dir()</code>：标准目录</li></ul><h3 id=43-mainloop-类>4.3 MainLoop 类</h3><blockquote><p><strong>证据等级 A</strong>：基于 <code>core/os/main_loop.h</code> 验证。</p></blockquote><div class=highlight><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=c1>// core/os/main_loop.h（简化）
+</span></span></span><span class=line><span class=cl><span class=k>class</span> <span class=nc>MainLoop</span> <span class=o>:</span> <span class=k>public</span> <span class=n>Object</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=n>GDCLASS</span><span class=p>(</span><span class=n>MainLoop</span><span class=p>,</span> <span class=n>Object</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=k>public</span><span class=o>:</span>
+</span></span><span class=line><span class=cl>    <span class=k>enum</span> <span class=nc>Notification</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=n>NOTIFICATION_OS_MEMORY_WARNING</span> <span class=o>=</span> <span class=mi>2009</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>        <span class=n>NOTIFICATION_OS_IME_UPDATE</span> <span class=o>=</span> <span class=mi>2010</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>        <span class=n>NOTIFICATION_APPLICATION_RESUMED</span> <span class=o>=</span> <span class=mi>2011</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>        <span class=n>NOTIFICATION_APPLICATION_PAUSED</span> <span class=o>=</span> <span class=mi>2012</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>        <span class=n>NOTIFICATION_APPLICATION_FOCUS_IN</span> <span class=o>=</span> <span class=mi>2013</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>        <span class=n>NOTIFICATION_APPLICATION_FOCUS_OUT</span> <span class=o>=</span> <span class=mi>2014</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>        <span class=n>NOTIFICATION_TRANSLATION_CHANGED</span> <span class=o>=</span> <span class=mi>2015</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>        <span class=n>NOTIFICATION_WM_ABOUT</span> <span class=o>=</span> <span class=mi>2016</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>        <span class=n>NOTIFICATION_CRASH</span> <span class=o>=</span> <span class=mi>2017</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>        <span class=n>NOTIFICATION_OS_IME_UPDATE</span> <span class=o>=</span> <span class=mi>2010</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>    <span class=p>};</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=k>virtual</span> <span class=kt>void</span> <span class=nf>initialize</span><span class=p>()</span> <span class=o>=</span> <span class=mi>0</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=k>virtual</span> <span class=kt>bool</span> <span class=nf>process</span><span class=p>(</span><span class=kt>double</span> <span class=n>delta</span><span class=p>)</span> <span class=o>=</span> <span class=mi>0</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=k>virtual</span> <span class=kt>bool</span> <span class=nf>physics_process</span><span class=p>(</span><span class=kt>double</span> <span class=n>delta</span><span class=p>)</span> <span class=o>=</span> <span class=mi>0</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=k>virtual</span> <span class=kt>void</span> <span class=nf>finalize</span><span class=p>()</span> <span class=o>=</span> <span class=mi>0</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=k>virtual</span> <span class=kt>void</span> <span class=nf>init</span><span class=p>()</span> <span class=p>{}</span>
+</span></span><span class=line><span class=cl>    <span class=k>virtual</span> <span class=kt>void</span> <span class=nf>pre_delete_handle</span><span class=p>()</span> <span class=p>{}</span>
+</span></span><span class=line><span class=cl>    <span class=k>virtual</span> <span class=kt>void</span> <span class=nf>post_delete_handle</span><span class=p>()</span> <span class=p>{}</span>
+</span></span><span class=line><span class=cl><span class=p>};</span>
+</span></span></code></pre></div><p>MainLoop 是主循环的抽象，定义了 initialize/process/physics_process/finalize 四个核心方法。SceneTree 是其具体实现。</p><h3 id=44-scenetree-类>4.4 SceneTree 类</h3><blockquote><p><strong>证据等级 A</strong>：基于 <code>scene/main/scene_tree.h:89</code> 验证。</p></blockquote><p>SceneTree 继承 MainLoop，是引擎运行时的"世界容器"。它持有根 Window，管理所有节点的树形结构，并驱动每帧的 process/physics_process 调用。</p><hr><h2 id=5-关键算法与流程>5. 关键算法与流程</h2><h3 id=51-阶段-1mainsetup-详解>5.1 阶段 1：Main::setup() 详解</h3><blockquote><p><strong>证据等级 A</strong>：基于 <code>main/main.cpp:3006</code> 的 <code>setup</code> 方法验证。</p></blockquote><p><code>Main::setup()</code> 是启动的第一阶段，负责基础初始化。主要步骤：</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=c1>// main/main.cpp:3006（简化）
+</span></span></span><span class=line><span class=cl><span class=n>Error</span> <span class=n>Main</span><span class=o>::</span><span class=n>setup</span><span class=p>(</span><span class=k>const</span> <span class=kt>char</span> <span class=o>*</span><span class=n>execpath</span><span class=p>,</span> <span class=n>uintptr_t</span> <span class=n>p_instance_id</span><span class=p>,</span> <span class=kt>bool</span> <span class=n>p_second_thread</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=c1>// 1. 创建 OS 单例（平台特定）
+</span></span></span><span class=line><span class=cl>    <span class=c1>// 在平台入口点已创建，此处获取
+</span></span></span><span class=line><span class=cl>    <span class=n>OS</span> <span class=o>*</span><span class=n>os</span> <span class=o>=</span> <span class=n>OS</span><span class=o>::</span><span class=n>get_singleton</span><span class=p>();</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=c1>// 2. 设置启动时间
+</span></span></span><span class=line><span class=cl>    <span class=n>os</span><span class=o>-&gt;</span><span class=n>set_startup_time</span><span class=p>(</span><span class=n>OS</span><span class=o>::</span><span class=n>get_singleton</span><span class=p>()</span><span class=o>-&gt;</span><span class=n>get_ticks_usec</span><span class=p>());</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=c1>// 3. 解析命令行参数
+</span></span></span><span class=line><span class=cl>    <span class=n>List</span><span class=o>&lt;</span><span class=n>String</span><span class=o>&gt;</span> <span class=n>args</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=k>for</span> <span class=p>(</span><span class=kt>int</span> <span class=n>i</span> <span class=o>=</span> <span class=mi>1</span><span class=p>;</span> <span class=n>i</span> <span class=o>&lt;</span> <span class=n>argc</span><span class=p>;</span> <span class=n>i</span><span class=o>++</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=n>args</span><span class=p>.</span><span class=n>push_back</span><span class=p>(</span><span class=n>argv</span><span class=p>[</span><span class=n>i</span><span class=p>]);</span>
+</span></span><span class=line><span class=cl>    <span class=p>}</span>
+</span></span><span class=line><span class=cl>    <span class=c1>// 解析 --rendering-driver, --audio-driver 等
+</span></span></span><span class=line><span class=cl>    <span class=c1>// ...
+</span></span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=c1>// 4. 注册核心类型
+</span></span></span><span class=line><span class=cl>    <span class=n>register_core_types</span><span class=p>();</span> <span class=c1>// core/register_core_types.cpp:135
+</span></span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=c1>// 5. 注册服务器类型
+</span></span></span><span class=line><span class=cl>    <span class=n>register_server_types</span><span class=p>();</span> <span class=c1>// servers/register_server_types.cpp:153
+</span></span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=c1>// 6. 注册场景类型
+</span></span></span><span class=line><span class=cl>    <span class=n>register_scene_types</span><span class=p>();</span> <span class=c1>// scene/register_scene_types.cpp:395
+</span></span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=c1>// 7. 注册模块类型
+</span></span></span><span class=line><span class=cl>    <span class=n>register_module_types</span><span class=p>();</span> <span class=c1>// modules/register_module_types.cpp
+</span></span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=c1>// 8. 初始化核心单例
+</span></span></span><span class=line><span class=cl>    <span class=c1>// - ProjectSettings
+</span></span></span><span class=line><span class=cl>    <span class=c1>// - InputMap
+</span></span></span><span class=line><span class=cl>    <span class=c1>// - TranslationServer
+</span></span></span><span class=line><span class=cl>    <span class=c1>// ...
+</span></span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=c1>// 9. 创建 DisplayServer
+</span></span></span><span class=line><span class=cl>    <span class=n>DisplayServer</span><span class=o>::</span><span class=n>create</span><span class=p>(</span><span class=n>os</span><span class=o>-&gt;</span><span class=n>get_display_driver_id</span><span class=p>(),</span> <span class=n>DisplayServer</span><span class=o>::</span><span class=n>WindowMode</span><span class=o>::</span><span class=n>WINDOW_MODE_WINDOWED</span><span class=p>,</span> <span class=p>...);</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=c1>// 10. 创建 RenderingServer
+</span></span></span><span class=line><span class=cl>    <span class=c1>// 根据 --rendering-driver 选择后端（vulkan/gles3）
+</span></span></span><span class=line><span class=cl>    <span class=n>RenderingServer</span><span class=o>::</span><span class=n>create</span> <span class=n>RenderingServer</span><span class=o>::</span><span class=n>get_singleton</span><span class=p>();</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=c1>// 11. 创建 PhysicsServer2D/3D
+</span></span></span><span class=line><span class=cl>    <span class=n>PhysicsServer2DManager</span><span class=o>::</span><span class=n>get_singleton</span><span class=p>()</span><span class=o>-&gt;</span><span class=n>new_server</span><span class=p>(...);</span>
+</span></span><span class=line><span class=cl>    <span class=n>PhysicsServer3DManager</span><span class=o>::</span><span class=n>get_singleton</span><span class=p>()</span><span class=o>-&gt;</span><span class=n>new_server</span><span class=p>(...);</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=c1>// 12. 创建 AudioServer
+</span></span></span><span class=line><span class=cl>    <span class=n>AudioServer</span><span class=o>::</span><span class=n>get_singleton</span><span class=p>()</span><span class=o>-&gt;</span><span class=n>init</span><span class=p>();</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=c1>// 13. 创建 TextServerManager
+</span></span></span><span class=line><span class=cl>    <span class=n>TextServerManager</span><span class=o>::</span><span class=n>get_singleton</span><span class=p>();</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=c1>// 14. 加载项目设置
+</span></span></span><span class=line><span class=cl>    <span class=c1>// 查找 project.godot，加载设置
+</span></span></span><span class=line><span class=cl>    <span class=c1>// ...
+</span></span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=k>return</span> <span class=n>OK</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></div><h4 id=511-类型注册顺序>5.1.1 类型注册顺序</h4><blockquote><p><strong>证据等级 A</strong>：基于各 <code>register_*_types.cpp</code> 验证。</p></blockquote><p>类型注册严格按依赖顺序：</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>1. register_core_types()     ← 最先，注册 Object/Variant/ClassDB 等
+</span></span><span class=line><span class=cl>   ├── GDREGISTER_CLASS(Object)
+</span></span><span class=line><span class=cl>   ├── GDREGISTER_CLASS(RefCounted)
+</span></span><span class=line><span class=cl>   ├── GDREGISTER_CLASS(Resource)
+</span></span><span class=line><span class=cl>   ├── GDREGISTER_CLASS(MainLoop)
+</span></span><span class=line><span class=cl>   ├── GDREGISTER_CLASS(Image)
+</span></span><span class=line><span class=cl>   ├── GDREGISTER_CLASS(TranslationServer)
+</span></span><span class=line><span class=cl>   ├── GDREGISTER_CLASS(InputMap)
+</span></span><span class=line><span class=cl>   ├── GDREGISTER_CLASS(ProjectSettings)
+</span></span><span class=line><span class=cl>   └── ...（约 100+ 核心类）
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>2. register_server_types()   ← 依赖 core
+</span></span><span class=line><span class=cl>   ├── GDREGISTER_ABSTRACT_CLASS(DisplayServer)
+</span></span><span class=line><span class=cl>   ├── GDREGISTER_ABSTRACT_CLASS(RenderingServer)
+</span></span><span class=line><span class=cl>   ├── GDREGISTER_CLASS(AudioServer)
+</span></span><span class=line><span class=cl>   ├── GDREGISTER_CLASS(TextServerManager)
+</span></span><span class=line><span class=cl>   ├── GDREGISTER_CLASS(PhysicsServer2DManager)
+</span></span><span class=line><span class=cl>   ├── GDREGISTER_CLASS(PhysicsServer3DManager)
+</span></span><span class=line><span class=cl>   └── ...
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>3. register_scene_types()    ← 依赖 core、servers
+</span></span><span class=line><span class=cl>   ├── GDREGISTER_CLASS(Node)             ← 依赖 Object
+</span></span><span class=line><span class=cl>   ├── GDREGISTER_CLASS(CanvasItem)      ← 依赖 Node
+</span></span><span class=line><span class=cl>   ├── GDREGISTER_CLASS(Node2D)          ← 依赖 CanvasItem
+</span></span><span class=line><span class=cl>   ├── GDREGISTER_CLASS(Node3D)
+</span></span><span class=line><span class=cl>   ├── GDREGISTER_CLASS(Control)
+</span></span><span class=line><span class=cl>   ├── GDREGISTER_CLASS(SceneTree)       ← 依赖 MainLoop、Node
+</span></span><span class=line><span class=cl>   ├── GDREGISTER_CLASS(Viewport)
+</span></span><span class=line><span class=cl>   ├── GDREGISTER_CLASS(Window)
+</span></span><span class=line><span class=cl>   └── ...（约 500+ 场景类）
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>4. register_module_types()   ← 依赖 core、servers、scene
+</span></span><span class=line><span class=cl>   ├── initialize_modules(MODULE_INITIALIZATION_LEVEL_CORE)
+</span></span><span class=line><span class=cl>   ├── initialize_modules(MODULE_INITIALIZATION_LEVEL_SERVERS)
+</span></span><span class=line><span class=cl>   │   └── GDREGISTER_CLASS(GDScript)    ← GDScript 模块
+</span></span><span class=line><span class=cl>   ├── initialize_modules(MODULE_INITIALIZATION_LEVEL_SCENE)
+</span></span><span class=line><span class=cl>   └── initialize_modules(MODULE_INITIALIZATION_LEVEL_EDITOR)
+</span></span></code></pre></div><h4 id=512-服务器创建>5.1.2 服务器创建</h4><blockquote><p><strong>证据等级 A</strong>：基于 <code>main/main.cpp</code> 验证。</p></blockquote><p>服务器创建按特定顺序，确保依赖正确：</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>1. DisplayServer（最先，提供窗口）
+</span></span><span class=line><span class=cl>   │
+</span></span><span class=line><span class=cl>   ▼
+</span></span><span class=line><span class=cl>2. RenderingServer（依赖 DisplayServer 的上下文）
+</span></span><span class=line><span class=cl>   │
+</span></span><span class=line><span class=cl>   ▼
+</span></span><span class=line><span class=cl>3. PhysicsServer2D/3D（独立）
+</span></span><span class=line><span class=cl>   │
+</span></span><span class=line><span class=cl>   ▼
+</span></span><span class=line><span class=cl>4. AudioServer（依赖 DisplayServer 的音频设备）
+</span></span><span class=line><span class=cl>   │
+</span></span><span class=line><span class=cl>   ▼
+</span></span><span class=line><span class=cl>5. TextServerManager（独立）
+</span></span><span class=line><span class=cl>   │
+</span></span><span class=line><span class=cl>   ▼
+</span></span><span class=line><span class=cl>6. NavigationServer（独立）
+</span></span></code></pre></div><h3 id=52-阶段-2mainstart-详解>5.2 阶段 2：Main::start() 详解</h3><blockquote><p><strong>证据等级 A</strong>：基于 <code>main/main.cpp:3974</code> 的 <code>start</code> 方法验证。</p></blockquote><p><code>Main::start()</code> 是启动的第二阶段，负责业务初始化。主要步骤：</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=c1>// main/main.cpp:3974（简化）
+</span></span></span><span class=line><span class=cl><span class=n>Error</span> <span class=n>Main</span><span class=o>::</span><span class=n>start</span><span class=p>(</span><span class=n>uintptr_t</span> <span class=n>p_instance_id</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=c1>// 1. 加载主包（如果指定）
+</span></span></span><span class=line><span class=cl>    <span class=c1>// --main-pack 参数
+</span></span></span><span class=line><span class=cl>    <span class=c1>// ...
+</span></span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=c1>// 2. 确定主场景路径
+</span></span></span><span class=line><span class=cl>    <span class=n>String</span> <span class=n>main_scene</span> <span class=o>=</span> <span class=n>GLOBAL_GET</span><span class=p>(</span><span class=s>&#34;application/run/main_scene&#34;</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=c1>// 例如 &#34;res://main.tscn&#34;
+</span></span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=c1>// 3. 创建 SceneTree（主循环）
+</span></span></span><span class=line><span class=cl>    <span class=n>SceneTree</span> <span class=o>*</span><span class=n>scene_tree</span> <span class=o>=</span> <span class=n>memnew</span><span class=p>(</span><span class=n>SceneTree</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=n>OS</span><span class=o>::</span><span class=n>get_singleton</span><span class=p>()</span><span class=o>-&gt;</span><span class=n>set_main_loop</span><span class=p>(</span><span class=n>scene_tree</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=c1>// 4. 初始化 SceneTree
+</span></span></span><span class=line><span class=cl>    <span class=n>scene_tree</span><span class=o>-&gt;</span><span class=n>initialize</span><span class=p>();</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=c1>// 5. 加载主场景
+</span></span></span><span class=line><span class=cl>    <span class=k>if</span> <span class=p>(</span><span class=o>!</span><span class=n>main_scene</span><span class=p>.</span><span class=n>is_empty</span><span class=p>())</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=n>Ref</span><span class=o>&lt;</span><span class=n>PackedScene</span><span class=o>&gt;</span> <span class=n>scene</span> <span class=o>=</span> <span class=n>ResourceLoader</span><span class=o>::</span><span class=n>load</span><span class=p>(</span><span class=n>main_scene</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>        <span class=k>if</span> <span class=p>(</span><span class=n>scene</span><span class=p>.</span><span class=n>is_valid</span><span class=p>())</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>            <span class=n>Node</span> <span class=o>*</span><span class=n>instance</span> <span class=o>=</span> <span class=n>scene</span><span class=o>-&gt;</span><span class=n>instantiate</span><span class=p>();</span>
+</span></span><span class=line><span class=cl>            <span class=n>scene_tree</span><span class=o>-&gt;</span><span class=n>add_child</span><span class=p>(</span><span class=n>instance</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>        <span class=p>}</span>
+</span></span><span class=line><span class=cl>    <span class=p>}</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=c1>// 6. 如果是编辑器，启动编辑器
+</span></span></span><span class=line><span class=cl>    <span class=cp>#ifdef TOOLS_ENABLED
+</span></span></span><span class=line><span class=cl>    <span class=k>if</span> <span class=p>(</span><span class=n>editor</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=n>EditorNode</span> <span class=o>*</span><span class=n>editor_node</span> <span class=o>=</span> <span class=n>memnew</span><span class=p>(</span><span class=n>EditorNode</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>        <span class=n>scene_tree</span><span class=o>-&gt;</span><span class=n>get_root</span><span class=p>()</span><span class=o>-&gt;</span><span class=n>add_child</span><span class=p>(</span><span class=n>editor_node</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=p>}</span>
+</span></span><span class=line><span class=cl>    <span class=cp>#endif
+</span></span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=k>return</span> <span class=n>OK</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></div><h4 id=521-scenetree-创建>5.2.1 SceneTree 创建</h4><blockquote><p><strong>证据等级 A</strong>：基于 <code>scene/main/scene_tree.cpp</code> 验证。</p></blockquote><div class=highlight><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=c1>// scene/main/scene_tree.cpp（简化）
+</span></span></span><span class=line><span class=cl><span class=n>SceneTree</span><span class=o>::</span><span class=n>SceneTree</span><span class=p>()</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=c1>// 1. 创建根 Window
+</span></span></span><span class=line><span class=cl>    <span class=n>root</span> <span class=o>=</span> <span class=n>memnew</span><span class=p>(</span><span class=n>Window</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=n>root</span><span class=o>-&gt;</span><span class=n>set_name</span><span class=p>(</span><span class=s>&#34;root&#34;</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=n>root</span><span class=o>-&gt;</span><span class=n>set_tree</span><span class=p>(</span><span class=k>this</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=c1>// 2. 初始化 MessageQueue
+</span></span></span><span class=line><span class=cl>    <span class=c1>// MessageQueue 是单例，但 SceneTree 持有引用
+</span></span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=c1>// 3. 设置默认进程模式
+</span></span></span><span class=line><span class=cl>    <span class=c1>// ...
+</span></span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></div><h4 id=522-主场景加载>5.2.2 主场景加载</h4><blockquote><p><strong>证据等级 A</strong>：基于 <code>scene/main/scene_tree.cpp</code> 的 <code>change_scene</code> 验证。</p></blockquote><div class=highlight><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=c1>// 简化的场景加载流程
+</span></span></span><span class=line><span class=cl><span class=n>Error</span> <span class=n>SceneTree</span><span class=o>::</span><span class=n>change_scene_to_file</span><span class=p>(</span><span class=k>const</span> <span class=n>String</span> <span class=o>&amp;</span><span class=n>p_path</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=c1>// 1. 异步加载 PackedScene
+</span></span></span><span class=line><span class=cl>    <span class=n>Ref</span><span class=o>&lt;</span><span class=n>PackedScene</span><span class=o>&gt;</span> <span class=n>new_scene</span> <span class=o>=</span> <span class=n>ResourceLoader</span><span class=o>::</span><span class=n>load</span><span class=p>(</span><span class=n>p_path</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=n>ERR_FAIL_COND_V</span><span class=p>(</span><span class=o>!</span><span class=n>new_scene</span><span class=p>.</span><span class=n>is_valid</span><span class=p>(),</span> <span class=n>ERR_CANT_OPEN</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=c1>// 2. 延迟切换（避免当前帧迭代中修改）
+</span></span></span><span class=line><span class=cl>    <span class=n>current_scene</span> <span class=o>=</span> <span class=n>new_scene</span><span class=o>-&gt;</span><span class=n>instantiate</span><span class=p>();</span>
+</span></span><span class=line><span class=cl>    <span class=n>root</span><span class=o>-&gt;</span><span class=n>add_child</span><span class=p>(</span><span class=n>current_scene</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=k>return</span> <span class=n>OK</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></div><h3 id=53-阶段-3osrun-主循环>5.3 阶段 3：OS::run() 主循环</h3><blockquote><p><strong>证据等级 A</strong>：基于 <code>platform/windows/os_windows.cpp:2348</code> 的 <code>run</code> 方法验证。</p></blockquote><div class=highlight><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=c1>// platform/windows/os_windows.cpp:2348（简化）
+</span></span></span><span class=line><span class=cl><span class=kt>void</span> <span class=n>OS_Windows</span><span class=o>::</span><span class=n>run</span><span class=p>()</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=c1>// 1. 获取主循环
+</span></span></span><span class=line><span class=cl>    <span class=n>MainLoop</span> <span class=o>*</span><span class=n>main_loop</span> <span class=o>=</span> <span class=n>get_main_loop</span><span class=p>();</span>
+</span></span><span class=line><span class=cl>    <span class=k>if</span> <span class=p>(</span><span class=o>!</span><span class=n>main_loop</span><span class=p>)</span> <span class=k>return</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=c1>// 2. 初始化主循环
+</span></span></span><span class=line><span class=cl>    <span class=n>main_loop</span><span class=o>-&gt;</span><span class=n>initialize</span><span class=p>();</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=c1>// 3. 主循环
+</span></span></span><span class=line><span class=cl>    <span class=kt>bool</span> <span class=n>exit</span> <span class=o>=</span> <span class=nb>false</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=kt>uint64_t</span> <span class=n>last_ticks</span> <span class=o>=</span> <span class=n>get_ticks_usec</span><span class=p>();</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=k>while</span> <span class=p>(</span><span class=o>!</span><span class=n>exit</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=c1>// 3.1 处理系统事件
+</span></span></span><span class=line><span class=cl>        <span class=n>DisplayServer</span><span class=o>::</span><span class=n>get_singleton</span><span class=p>()</span><span class=o>-&gt;</span><span class=n>process_events</span><span class=p>();</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>        <span class=c1>// 3.2 计算帧时间
+</span></span></span><span class=line><span class=cl>        <span class=kt>uint64_t</span> <span class=n>current_ticks</span> <span class=o>=</span> <span class=n>get_ticks_usec</span><span class=p>();</span>
+</span></span><span class=line><span class=cl>        <span class=kt>double</span> <span class=n>frame_time</span> <span class=o>=</span> <span class=p>(</span><span class=n>current_ticks</span> <span class=o>-</span> <span class=n>last_ticks</span><span class=p>)</span> <span class=o>/</span> <span class=mf>1000000.0</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>        <span class=n>last_ticks</span> <span class=o>=</span> <span class=n>current_ticks</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>        <span class=c1>// 3.3 调用 Main::iteration
+</span></span></span><span class=line><span class=cl>        <span class=n>exit</span> <span class=o>=</span> <span class=n>Main</span><span class=o>::</span><span class=n>iteration</span><span class=p>(</span><span class=n>frame_time</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=p>}</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=c1>// 4. 清理主循环
+</span></span></span><span class=line><span class=cl>    <span class=n>main_loop</span><span class=o>-&gt;</span><span class=n>finalize</span><span class=p>();</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></div><h4 id=531-mainiteration-详解>5.3.1 Main::iteration() 详解</h4><blockquote><p><strong>证据等级 A</strong>：基于 <code>main/main.cpp</code> 的 <code>iteration</code> 方法验证。</p></blockquote><div class=highlight><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=c1>// main/main.cpp（简化）
+</span></span></span><span class=line><span class=cl><span class=kt>bool</span> <span class=n>Main</span><span class=o>::</span><span class=n>iteration</span><span class=p>(</span><span class=kt>double</span> <span class=n>p_time</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=c1>// 1. 获取主循环
+</span></span></span><span class=line><span class=cl>    <span class=n>MainLoop</span> <span class=o>*</span><span class=n>main_loop</span> <span class=o>=</span> <span class=n>OS</span><span class=o>::</span><span class=n>get_singleton</span><span class=p>()</span><span class=o>-&gt;</span><span class=n>get_main_loop</span><span class=p>();</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=c1>// 2. 处理物理（固定步长）
+</span></span></span><span class=line><span class=cl>    <span class=k>static</span> <span class=kt>double</span> <span class=n>time_accumulator</span> <span class=o>=</span> <span class=mi>0</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=n>time_accumulator</span> <span class=o>+=</span> <span class=n>p_time</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=c1>// 物理帧率（默认 60fps）
+</span></span></span><span class=line><span class=cl>    <span class=kt>double</span> <span class=n>physics_step</span> <span class=o>=</span> <span class=mf>1.0</span> <span class=o>/</span> <span class=n>Engine</span><span class=o>::</span><span class=n>get_singleton</span><span class=p>()</span><span class=o>-&gt;</span><span class=n>get_physics_ticks_per_second</span><span class=p>();</span>
+</span></span><span class=line><span class=cl>    <span class=kt>int</span> <span class=n>physics_frames</span> <span class=o>=</span> <span class=mi>0</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=k>while</span> <span class=p>(</span><span class=n>time_accumulator</span> <span class=o>&gt;=</span> <span class=n>physics_step</span> <span class=o>&amp;&amp;</span> <span class=n>physics_frames</span> <span class=o>&lt;</span> <span class=mi>8</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=c1>// 2.1 物理服务器步进
+</span></span></span><span class=line><span class=cl>        <span class=n>PhysicsServer2D</span><span class=o>::</span><span class=n>get_singleton</span><span class=p>()</span><span class=o>-&gt;</span><span class=n>step</span><span class=p>(</span><span class=n>physics_step</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>        <span class=n>PhysicsServer3D</span><span class=o>::</span><span class=n>get_singleton</span><span class=p>()</span><span class=o>-&gt;</span><span class=n>step</span><span class=p>(</span><span class=n>physics_step</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>        <span class=c1>// 2.2 场景物理处理
+</span></span></span><span class=line><span class=cl>        <span class=n>main_loop</span><span class=o>-&gt;</span><span class=n>physics_process</span><span class=p>(</span><span class=n>physics_step</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>        <span class=n>time_accumulator</span> <span class=o>-=</span> <span class=n>physics_step</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>        <span class=n>physics_frames</span><span class=o>++</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=p>}</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=c1>// 3. 场景逻辑处理
+</span></span></span><span class=line><span class=cl>    <span class=n>main_loop</span><span class=o>-&gt;</span><span class=n>process</span><span class=p>(</span><span class=n>p_time</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=c1>// 4. 渲染
+</span></span></span><span class=line><span class=cl>    <span class=n>RenderingServer</span><span class=o>::</span><span class=n>get_singleton</span><span class=p>()</span><span class=o>-&gt;</span><span class=n>draw</span><span class=p>();</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=c1>// 5. 音频更新
+</span></span></span><span class=line><span class=cl>    <span class=n>AudioServer</span><span class=o>::</span><span class=n>get_singleton</span><span class=p>()</span><span class=o>-&gt;</span><span class=n>update</span><span class=p>();</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=c1>// 6. 处理 MessageQueue（延迟调用）
+</span></span></span><span class=line><span class=cl>    <span class=n>MessageQueue</span><span class=o>::</span><span class=n>get_singleton</span><span class=p>()</span><span class=o>-&gt;</span><span class=n>flush</span><span class=p>();</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=c1>// 7. 处理延迟删除队列
+</span></span></span><span class=line><span class=cl>    <span class=c1>// memdelete 延迟的对象
+</span></span></span><span class=line><span class=cl>    <span class=c1>// ...
+</span></span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=c1>// 8. 检查退出
+</span></span></span><span class=line><span class=cl>    <span class=k>if</span> <span class=p>(</span><span class=n>main_loop</span><span class=o>-&gt;</span><span class=n>is_quit_on_go_back</span><span class=p>()</span> <span class=o>&amp;&amp;</span> <span class=o>!</span><span class=n>DisplayServer</span><span class=o>::</span><span class=n>get_singleton</span><span class=p>()</span><span class=o>-&gt;</span><span class=n>window_can_draw</span><span class=p>())</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=k>return</span> <span class=nb>true</span><span class=p>;</span> <span class=c1>// 退出
+</span></span></span><span class=line><span class=cl>    <span class=p>}</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=k>return</span> <span class=n>OS</span><span class=o>::</span><span class=n>get_singleton</span><span class=p>()</span><span class=o>-&gt;</span><span class=n>is_exit_demand</span><span class=p>();</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></div><h4 id=532-scenetreeprocess-详解>5.3.2 SceneTree::process() 详解</h4><blockquote><p><strong>证据等级 A</strong>：基于 <code>scene/main/scene_tree.cpp</code> 验证。</p></blockquote><div class=highlight><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=c1>// scene/main/scene_tree.cpp（简化）
+</span></span></span><span class=line><span class=cl><span class=kt>bool</span> <span class=n>SceneTree</span><span class=o>::</span><span class=n>process</span><span class=p>(</span><span class=kt>double</span> <span class=n>time</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=c1>// 1. 刷新 MessageQueue（上一帧的延迟调用）
+</span></span></span><span class=line><span class=cl>    <span class=n>MessageQueue</span><span class=o>::</span><span class=n>get_singleton</span><span class=p>()</span><span class=o>-&gt;</span><span class=n>flush</span><span class=p>();</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=c1>// 2. 发送 NOTIFICATION_PROCESS
+</span></span></span><span class=line><span class=cl>    <span class=n>_process</span><span class=p>(</span><span class=nb>false</span><span class=p>,</span> <span class=n>time</span><span class=p>);</span> <span class=c1>// false = 非物理
+</span></span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=c1>// 3. 处理就绪队列
+</span></span></span><span class=line><span class=cl>    <span class=n>_flush_nodes_to_ready</span><span class=p>();</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=c1>// 4. 更新分组
+</span></span></span><span class=line><span class=cl>    <span class=c1>// ...
+</span></span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=c1>// 5. 渲染前更新
+</span></span></span><span class=line><span class=cl>    <span class=n>RenderingServer</span><span class=o>::</span><span class=n>get_singleton</span><span class=p>()</span><span class=o>-&gt;</span><span class=n>tick</span><span class=p>();</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=k>return</span> <span class=nb>true</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=kt>void</span> <span class=n>SceneTree</span><span class=o>::</span><span class=n>_process</span><span class=p>(</span><span class=kt>bool</span> <span class=n>p_physics</span><span class=p>,</span> <span class=kt>double</span> <span class=n>p_delta</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=c1>// 遍历所有需要处理的节点
+</span></span></span><span class=line><span class=cl>    <span class=n>SelfList</span><span class=o>&lt;</span><span class=n>Node</span><span class=o>&gt;::</span><span class=n>List</span> <span class=o>*</span><span class=n>process_list</span> <span class=o>=</span> <span class=n>p_physics</span> <span class=o>?</span> <span class=o>&amp;</span><span class=nl>physics_process_list</span> <span class=p>:</span> <span class=o>&amp;</span><span class=n>process_list_head</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=c1>// 锁定列表（防止迭代中修改）
+</span></span></span><span class=line><span class=cl>    <span class=n>_process_lock</span><span class=o>++</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=k>for</span> <span class=p>(</span><span class=n>SelfList</span><span class=o>&lt;</span><span class=n>Node</span><span class=o>&gt;</span> <span class=o>*</span><span class=n>n</span> <span class=o>=</span> <span class=n>process_list</span><span class=o>-&gt;</span><span class=n>first</span><span class=p>();</span> <span class=n>n</span><span class=p>;</span> <span class=n>n</span> <span class=o>=</span> <span class=n>n</span><span class=o>-&gt;</span><span class=n>next</span><span class=p>())</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=n>Node</span> <span class=o>*</span><span class=n>node</span> <span class=o>=</span> <span class=n>n</span><span class=o>-&gt;</span><span class=n>self</span><span class=p>();</span>
+</span></span><span class=line><span class=cl>        <span class=k>if</span> <span class=p>(</span><span class=n>node</span><span class=o>-&gt;</span><span class=n>can_process</span><span class=p>())</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>            <span class=kt>int</span> <span class=n>notification</span> <span class=o>=</span> <span class=n>p_physics</span> <span class=o>?</span> <span class=n>Node</span><span class=o>::</span><span class=nl>NOTIFICATION_PHYSICS_PROCESS</span> <span class=p>:</span> <span class=n>Node</span><span class=o>::</span><span class=n>NOTIFICATION_PROCESS</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>            <span class=n>node</span><span class=o>-&gt;</span><span class=n>notification</span><span class=p>(</span><span class=n>notification</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>        <span class=p>}</span>
+</span></span><span class=line><span class=cl>    <span class=p>}</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=n>_process_lock</span><span class=o>--</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></div><h3 id=54-阶段-4maincleanup-详解>5.4 阶段 4：Main::cleanup() 详解</h3><blockquote><p><strong>证据等级 A</strong>：基于 <code>main/main.cpp:4750</code> 的 <code>cleanup</code> 方法验证。</p></blockquote><div class=highlight><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=c1>// main/main.cpp:4750（简化）
+</span></span></span><span class=line><span class=cl><span class=kt>void</span> <span class=n>Main</span><span class=o>::</span><span class=n>cleanup</span><span class=p>(</span><span class=kt>bool</span> <span class=n>p_force</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=c1>// 1. 释放主循环（SceneTree）
+</span></span></span><span class=line><span class=cl>    <span class=k>if</span> <span class=p>(</span><span class=n>OS</span><span class=o>::</span><span class=n>get_singleton</span><span class=p>()</span><span class=o>-&gt;</span><span class=n>get_main_loop</span><span class=p>())</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=n>memdelete</span><span class=p>(</span><span class=n>OS</span><span class=o>::</span><span class=n>get_singleton</span><span class=p>()</span><span class=o>-&gt;</span><span class=n>get_main_loop</span><span class=p>());</span>
+</span></span><span class=line><span class=cl>        <span class=n>OS</span><span class=o>::</span><span class=n>get_singleton</span><span class=p>()</span><span class=o>-&gt;</span><span class=n>set_main_loop</span><span class=p>(</span><span class=k>nullptr</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=p>}</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=c1>// 2. 释放服务器
+</span></span></span><span class=line><span class=cl>    <span class=c1>// - RenderingServer
+</span></span></span><span class=line><span class=cl>    <span class=c1>// - PhysicsServer2D/3D
+</span></span></span><span class=line><span class=cl>    <span class=c1>// - AudioServer
+</span></span></span><span class=line><span class=cl>    <span class=c1>// - DisplayServer
+</span></span></span><span class=line><span class=cl>    <span class=c1>// - TextServerManager
+</span></span></span><span class=line><span class=cl>    <span class=c1>// ...
+</span></span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=c1>// 3. 注销类型（逆序）
+</span></span></span><span class=line><span class=cl>    <span class=n>unregister_module_types</span><span class=p>();</span>
+</span></span><span class=line><span class=cl>    <span class=n>unregister_scene_types</span><span class=p>();</span>
+</span></span><span class=line><span class=cl>    <span class=n>unregister_server_types</span><span class=p>();</span>
+</span></span><span class=line><span class=cl>    <span class=n>unregister_core_types</span><span class=p>();</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=c1>// 4. 释放核心单例
+</span></span></span><span class=line><span class=cl>    <span class=c1>// - ProjectSettings
+</span></span></span><span class=line><span class=cl>    <span class=c1>// - InputMap
+</span></span></span><span class=line><span class=cl>    <span class=c1>// - TranslationServer
+</span></span></span><span class=line><span class=cl>    <span class=c1>// ...
+</span></span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=c1>// 5. 销毁 OS 单例
+</span></span></span><span class=line><span class=cl>    <span class=n>OS</span> <span class=o>*</span><span class=n>os</span> <span class=o>=</span> <span class=n>OS</span><span class=o>::</span><span class=n>get_singleton</span><span class=p>();</span>
+</span></span><span class=line><span class=cl>    <span class=n>os</span><span class=o>-&gt;</span><span class=n>finalize</span><span class=p>();</span>
+</span></span><span class=line><span class=cl>    <span class=n>memdelete</span><span class=p>(</span><span class=n>os</span><span class=p>);</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></div><p>清理顺序与初始化相反，确保依赖正确释放。</p><hr><h2 id=6-与其他模块的交互>6. 与其他模块的交互</h2><h3 id=61-启动流程涉及的模块>6.1 启动流程涉及的模块</h3><div class=highlight><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>platform/          → 提供入口点与 OS 实现
+</span></span><span class=line><span class=cl>   │
+</span></span><span class=line><span class=cl>   ▼
+</span></span><span class=line><span class=cl>main/              → 协调所有层的初始化
+</span></span><span class=line><span class=cl>   │
+</span></span><span class=line><span class=cl>   ├── core/       → register_core_types()
+</span></span><span class=line><span class=cl>   ├── servers/    → register_server_types() + 创建服务器
+</span></span><span class=line><span class=cl>   ├── scene/      → register_scene_types() + 创建 SceneTree
+</span></span><span class=line><span class=cl>   └── modules/    → register_module_types()
+</span></span><span class=line><span class=cl>       │
+</span></span><span class=line><span class=cl>       ▼
+</span></span><span class=line><span class=cl>OS::run()          → 驱动主循环
+</span></span><span class=line><span class=cl>   │
+</span></span><span class=line><span class=cl>   ▼
+</span></span><span class=line><span class=cl>SceneTree          → 每帧驱动节点树
+</span></span></code></pre></div><h3 id=62-关键交互点>6.2 关键交互点</h3><ul><li><strong>platform ↔ main</strong>：平台入口点调用 Main 的静态方法</li><li><strong>main ↔ core</strong>：调用 register_core_types 注册核心类型</li><li><strong>main ↔ servers</strong>：创建并初始化各服务器</li><li><strong>main ↔ scene</strong>：创建 SceneTree 作为主循环</li><li><strong>OS ↔ MainLoop</strong>：OS::run() 驱动 MainLoop 的生命周期</li><li><strong>SceneTree ↔ Node</strong>：SceneTree 每帧驱动 Node 的 process</li></ul><hr><h2 id=7-内存与生命周期>7. 内存与生命周期</h2><h3 id=71-启动期间创建的对象>7.1 启动期间创建的对象</h3><table><thead><tr><th>对象</th><th>创建位置</th><th>释放位置</th></tr></thead><tbody><tr><td>OS 单例</td><td>平台入口点</td><td>Main::cleanup()</td></tr><tr><td>ClassDB 数据</td><td>register_*_types()</td><td>unregister_*_types()</td></tr><tr><td>DisplayServer</td><td>Main::setup()</td><td>Main::cleanup()</td></tr><tr><td>RenderingServer</td><td>Main::setup()</td><td>Main::cleanup()</td></tr><tr><td>PhysicsServer</td><td>Main::setup()</td><td>Main::cleanup()</td></tr><tr><td>AudioServer</td><td>Main::setup()</td><td>Main::cleanup()</td></tr><tr><td>SceneTree</td><td>Main::start()</td><td>Main::cleanup()</td></tr><tr><td>主场景节点</td><td>Main::start()</td><td>SceneTree 释放时</td></tr></tbody></table><h3 id=72-生命周期保证>7.2 生命周期保证</h3><ul><li><strong>类型注册先于实例化</strong>：所有类在 SceneTree 创建前注册</li><li><strong>服务器先于场景</strong>：服务器在 SceneTree 创建前就绪</li><li><strong>SceneTree 先于节点</strong>：SceneTree 创建后才加载场景</li><li><strong>清理逆序</strong>：先释放场景，再释放服务器，最后注销类型</li></ul><hr><h2 id=8-线程模型>8. 线程模型</h2><h3 id=81-启动阶段单线程>8.1 启动阶段（单线程）</h3><p>启动的 setup 和 start 阶段在主线程执行，所有初始化串行进行。</p><h3 id=82-主循环阶段>8.2 主循环阶段</h3><p>主循环在主线程，但部分服务器有独立线程：</p><ul><li><strong>PhysicsServer2DWrapMT</strong>：物理模拟在独立线程</li><li><strong>RenderingServer</strong>：渲染命令提交在主线程，GPU 执行异步</li><li><strong>AudioServer</strong>：音频混音在独立线程</li><li><strong>WorkerThreadPool</strong>：通用工作线程池</li></ul><h3 id=83-线程同步>8.3 线程同步</h3><ul><li><strong>MessageQueue</strong>：跨线程调用的延迟执行队列</li><li><strong>Callable::call_deferred</strong>：延迟到主线程执行</li><li><strong>PhysicsServer2DWrapMT 的 CommandQueueMT</strong>：物理线程的命令队列</li></ul><hr><h2 id=9-错误处理与日志>9. 错误处理与日志</h2><h3 id=91-启动错误处理>9.1 启动错误处理</h3><ul><li><code>Main::setup()</code> 失败返回非 OK，平台入口点退出</li><li><code>Main::start()</code> 失败调用 <code>Main::cleanup()</code> 后退出</li><li>服务器创建失败会 <code>ERR_FAIL</code></li><li>主场景加载失败会警告，但不退出</li></ul><h3 id=92-启动日志>9.2 启动日志</h3><p>启动过程输出大量日志，可通过 <code>--verbose</code> 查看：</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>CORE TYPES
+</span></span><span class=line><span class=cl>REGISTERED CLASSES: 100+
+</span></span><span class=line><span class=cl>SERVER TYPES
+</span></span><span class=line><span class=cl>SCENE TYPES
+</span></span><span class=line><span class=cl>MODULES LOADED
+</span></span><span class=line><span class=cl>RENDERING DRIVER: vulkan
+</span></span><span class=line><span class=cl>PHYSICS DRIVER: default
+</span></span><span class=line><span class=cl>AUDIO DRIVER: WASAPI
+</span></span><span class=line><span class=cl>PROJECT LOADED: /path/to/project
+</span></span><span class=line><span class=cl>MAIN SCENE: res://main.tscn
+</span></span></code></pre></div><hr><h2 id=10-配置与可扩展性>10. 配置与可扩展性</h2><h3 id=101-命令行参数>10.1 命令行参数</h3><p>启动支持大量命令行参数：</p><ul><li><code>--rendering-driver vulkan|gles3</code>：选择渲染后端</li><li><code>--audio-driver WASAPI|XAudio2|...</code>：选择音频后端</li><li><code>--physics-driver default|box2d|...</code>：选择物理后端</li><li><code>--main-pack &lt;path></code>：指定主包</li><li><code>--editor</code>：启动编辑器</li><li><code>--script &lt;path></code>：运行脚本</li><li><code>--verbose</code>：详细日志</li><li><code>--profiling</code>：启用性能分析</li></ul><h3 id=102-项目设置>10.2 项目设置</h3><p><code>project.godot</code> 中的关键启动设置：</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-ini data-lang=ini><span class=line><span class=cl><span class=k>[application]</span>
+</span></span><span class=line><span class=cl><span class=na>config/name</span><span class=o>=</span><span class=s>&#34;My Game&#34;</span>
+</span></span><span class=line><span class=cl><span class=na>run/main_scene</span><span class=o>=</span><span class=s>&#34;res://main.tscn&#34;</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=k>[display]</span>
+</span></span><span class=line><span class=cl><span class=na>window/size/viewport_width</span><span class=o>=</span><span class=s>1152</span>
+</span></span><span class=line><span class=cl><span class=na>window/size/viewport_height</span><span class=o>=</span><span class=s>648</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=k>[rendering]</span>
+</span></span><span class=line><span class=cl><span class=na>renderer/rendering_method</span><span class=o>=</span><span class=s>&#34;forward_plus&#34;</span>
+</span></span></code></pre></div><h3 id=103-扩展点>10.3 扩展点</h3><ul><li><strong>自定义 MainLoop</strong>：通过 <code>OS::set_main_loop()</code> 替换（高级用法）</li><li><strong>自定义服务器</strong>：通过 GDExtension 注册</li><li><strong>自定义模块</strong>：在 modules/ 添加，通过 register_types.cpp 接入</li></ul><hr><h2 id=11-性能考量>11. 性能考量</h2><h3 id=111-启动性能>11.1 启动性能</h3><ul><li><strong>类型注册开销</strong>：约 600+ 类的注册，在现代硬件上 &lt;100ms</li><li><strong>服务器创建开销</strong>：主要在 GPU 上下文创建，约 100-500ms</li><li><strong>主场景加载</strong>：取决于场景复杂度与资源大小</li></ul><h3 id=112-主循环性能>11.2 主循环性能</h3><ul><li><strong>物理步进</strong>：固定步长，默认 60fps，最多 8 步/帧（防止螺旋下降）</li><li><strong>节点处理</strong>：遍历 process_list，O(n)</li><li><strong>渲染</strong>：GPU 异步，主线程提交命令</li><li><strong>MessageQueue</strong>：帧末批量处理，减少调用开销</li></ul><hr><h2 id=12-调试技巧>12. 调试技巧</h2><h3 id=121-启动调试>12.1 启动调试</h3><div class=highlight><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl><span class=c1># 详细日志</span>
+</span></span><span class=line><span class=cl>godot --verbose
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=c1># 指定渲染后端</span>
+</span></span><span class=line><span class=cl>godot --rendering-driver gles3
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=c1># 运行脚本</span>
+</span></span><span class=line><span class=cl>godot --script res://test.gd
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=c1># 安全模式（禁用插件）</span>
+</span></span><span class=line><span class=cl>godot --safe-mode
+</span></span></code></pre></div><h3 id=122-启动崩溃排查>12.2 启动崩溃排查</h3><ul><li>检查 <code>--verbose</code> 日志</li><li>检查 <code>project.godot</code> 的 <code>main_scene</code> 是否存在</li><li>检查 GPU 驱动是否支持所选渲染后端</li><li>使用 <code>--rendering-driver gles3</code> 降级</li></ul><h3 id=123-性能分析>12.3 性能分析</h3><ul><li><code>--profiling</code> 启用内置性能分析</li><li><code>EngineDebugger</code> 提供运行时调试接口</li><li><code>Performance</code> 单例提供运行时指标</li></ul><hr><h2 id=13-常见陷阱>13. 常见陷阱</h2><h3 id=131-主场景未设置>13.1 主场景未设置</h3><p>若 <code>project.godot</code> 的 <code>main_scene</code> 为空，引擎启动后无场景，窗口黑屏。检查项目设置。</p><h3 id=132-渲染后端不支持>13.2 渲染后端不支持</h3><p>选择不支持的渲染后端（如旧硬件选 Vulkan）会导致启动失败。降级到 gles3。</p><h3 id=133-模块依赖缺失>13.3 模块依赖缺失</h3><p>自定义模块依赖其他模块时，若初始化顺序错误会崩溃。确保 <code>MODULE_INITIALIZATION_LEVEL</code> 正确。</p><h3 id=134-资源路径错误>13.4 资源路径错误</h3><p><code>res://</code> 路径区分大小写（在 Linux/macOS）。确保路径与文件系统一致。</p><h3 id=135-启动时崩溃>13.5 启动时崩溃</h3><ul><li>检查 GPU 驱动</li><li>检查系统库依赖（<code>ldd godot</code>）</li><li>尝试 <code>--safe-mode</code> 禁用插件</li><li>查看崩溃日志</li></ul><hr><h2 id=14-源码阅读建议>14. 源码阅读建议</h2><h3 id=141-推荐阅读顺序>14.1 推荐阅读顺序</h3><ol><li><strong>平台入口点</strong>：从 <code>platform/&lt;your_os>/godot_&lt;os>.cpp</code> 开始</li><li><strong>Main::setup()</strong>：理解基础初始化</li><li><strong>register_*_types()</strong>：理解类型注册顺序</li><li><strong>Main::start()</strong>：理解 SceneTree 创建</li><li><strong>OS::run()</strong>：理解主循环驱动</li><li><strong>Main::iteration()</strong>：理解每帧执行</li><li><strong>SceneTree::process()</strong>：理解节点处理</li></ol><h3 id=142-实践建议>14.2 实践建议</h3><ul><li>在 <code>Main::setup()</code> 添加日志，观察初始化顺序</li><li>在 <code>Main::iteration()</code> 添加帧计数器</li><li>在 <code>register_scene_types()</code> 搜索特定类的注册</li><li>尝试添加自定义模块，观察初始化时机</li></ul><h3 id=143-关键断点>14.3 关键断点</h3><p>调试时可在以下位置设断点：</p><ul><li><code>Main::setup()</code>：启动开始</li><li><code>register_core_types()</code>：核心类型注册</li><li><code>Main::start()</code>：业务初始化</li><li><code>OS_Windows::run()</code>：主循环开始</li><li><code>Main::iteration()</code>：每帧</li><li><code>SceneTree::process()</code>：场景处理</li></ul><hr><h2 id=15-参考与延伸>15. 参考与延伸</h2><h3 id=151-关键源码索引>15.1 关键源码索引</h3><table><thead><tr><th>主题</th><th>文件</th><th>行号(约)</th></tr></thead><tbody><tr><td>Windows 入口</td><td><code>platform/windows/godot_windows.cpp</code></td><td>-</td></tr><tr><td>Main::setup</td><td><code>main/main.cpp</code></td><td>3006</td></tr><tr><td>Main::start</td><td><code>main/main.cpp</code></td><td>3974</td></tr><tr><td>Main::iteration</td><td><code>main/main.cpp</code></td><td>-</td></tr><tr><td>Main::cleanup</td><td><code>main/main.cpp</code></td><td>4750</td></tr><tr><td>OS_Windows::run</td><td><code>platform/windows/os_windows.cpp</code></td><td>2348</td></tr><tr><td>register_core_types</td><td><code>core/register_core_types.cpp</code></td><td>135</td></tr><tr><td>register_server_types</td><td><code>servers/register_server_types.cpp</code></td><td>153</td></tr><tr><td>register_scene_types</td><td><code>scene/register_scene_types.cpp</code></td><td>395</td></tr><tr><td>SceneTree 构造</td><td><code>scene/main/scene_tree.cpp</code></td><td>-</td></tr></tbody></table><h3 id=152-相关文档>15.2 相关文档</h3><ul><li><a href=./01-%e6%80%bb%e4%bd%93%e6%9e%b6%e6%9e%84.md>01-总体架构.md</a>：整体架构概览</li><li><a href=./02-%e6%a0%b8%e5%bf%83%e6%a6%82%e5%bf%b5.md>02-核心概念.md</a>：Object/ClassDB 等核心概念</li><li><a href=./04-%e6%9c%8d%e5%8a%a1%e5%99%a8%e6%9e%b6%e6%9e%84.md>04-服务器架构.md</a>：服务器创建细节</li><li><a href=./05-%e8%b0%83%e7%94%a8%e9%93%be%e6%a1%88%e4%be%8b.md>05-调用链案例.md</a>：启动调用链案例</li><li><a href=./07-%e6%a8%a1%e5%9d%97%e7%b3%bb%e7%bb%9f%e4%b8%8e%e6%89%a9%e5%b1%95.md>07-模块系统与扩展.md</a>：模块初始化机制</li></ul><h3 id=153-启动流程时序图>15.3 启动流程时序图</h3><div class=highlight><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>sequenceDiagram
+</span></span><span class=line><span class=cl>    participant U as 用户
+</span></span><span class=line><span class=cl>    participant OS as 操作系统
+</span></span><span class=line><span class=cl>    participant PE as 平台入口点
+</span></span><span class=line><span class=cl>    participant Main as Main 类
+</span></span><span class=line><span class=cl>    participant CD as ClassDB
+</span></span><span class=line><span class=cl>    participant Servers as 服务器
+</span></span><span class=line><span class=cl>    participant ST as SceneTree
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    U-&gt;&gt;OS: 启动 godot 可执行文件
+</span></span><span class=line><span class=cl>    OS-&gt;&gt;PE: 调用 main()
+</span></span><span class=line><span class=cl>    PE-&gt;&gt;Main: setup()
+</span></span><span class=line><span class=cl>    Main-&gt;&gt;CD: register_core_types()
+</span></span><span class=line><span class=cl>    Main-&gt;&gt;CD: register_server_types()
+</span></span><span class=line><span class=cl>    Main-&gt;&gt;CD: register_scene_types()
+</span></span><span class=line><span class=cl>    Main-&gt;&gt;CD: register_module_types()
+</span></span><span class=line><span class=cl>    Main-&gt;&gt;Servers: 创建 DisplayServer
+</span></span><span class=line><span class=cl>    Main-&gt;&gt;Servers: 创建 RenderingServer
+</span></span><span class=line><span class=cl>    Main-&gt;&gt;Servers: 创建 PhysicsServer
+</span></span><span class=line><span class=cl>    Main-&gt;&gt;Servers: 创建 AudioServer
+</span></span><span class=line><span class=cl>    Main--&gt;&gt;PE: setup 完成
+</span></span><span class=line><span class=cl>    PE-&gt;&gt;Main: start()
+</span></span><span class=line><span class=cl>    Main-&gt;&gt;ST: 创建 SceneTree
+</span></span><span class=line><span class=cl>    Main-&gt;&gt;ST: 加载主场景
+</span></span><span class=line><span class=cl>    Main--&gt;&gt;PE: start 完成
+</span></span><span class=line><span class=cl>    PE-&gt;&gt;PE: os-&gt;run()
+</span></span><span class=line><span class=cl>    PE-&gt;&gt;ST: initialize()
+</span></span><span class=line><span class=cl>    loop 每帧
+</span></span><span class=line><span class=cl>        PE-&gt;&gt;Main: iteration()
+</span></span><span class=line><span class=cl>        Main-&gt;&gt;Servers: 物理步进
+</span></span><span class=line><span class=cl>        Main-&gt;&gt;ST: process()
+</span></span><span class=line><span class=cl>        Main-&gt;&gt;Servers: 渲染
+</span></span><span class=line><span class=cl>    end
+</span></span><span class=line><span class=cl>    PE-&gt;&gt;ST: finalize()
+</span></span><span class=line><span class=cl>    PE-&gt;&gt;Main: cleanup()
+</span></span><span class=line><span class=cl>    Main-&gt;&gt;ST: 释放 SceneTree
+</span></span><span class=line><span class=cl>    Main-&gt;&gt;Servers: 释放服务器
+</span></span><span class=line><span class=cl>    Main-&gt;&gt;CD: unregister_*_types()
+</span></span><span class=line><span class=cl>    PE--&gt;&gt;OS: 退出
+</span></span></code></pre></div></div><footer class=article-footer><span>归档于</span>
+<a href=/categories/godot/>Godot</a></footer></article><aside class="toc glass-panel" aria-label=文章目录><strong>本文目录</strong><nav id=TableOfContents><ul><li><a href=#1-模块概述>1. 模块概述</a></li><li><a href=#2-关键文件清单>2. 关键文件清单</a></li><li><a href=#3-核心数据结构>3. 核心数据结构</a><ul><li><a href=#31-启动阶段总览>3.1 启动阶段总览</a></li><li><a href=#32-main-类结构>3.2 Main 类结构</a></li></ul></li><li><a href=#4-核心类与职责>4. 核心类与职责</a><ul><li><a href=#41-平台入口点>4.1 平台入口点</a></li><li><a href=#42-os-类>4.2 OS 类</a></li><li><a href=#43-mainloop-类>4.3 MainLoop 类</a></li><li><a href=#44-scenetree-类>4.4 SceneTree 类</a></li></ul></li><li><a href=#5-关键算法与流程>5. 关键算法与流程</a><ul><li><a href=#51-阶段-1mainsetup-详解>5.1 阶段 1：Main::setup() 详解</a></li><li><a href=#52-阶段-2mainstart-详解>5.2 阶段 2：Main::start() 详解</a></li><li><a href=#53-阶段-3osrun-主循环>5.3 阶段 3：OS::run() 主循环</a></li><li><a href=#54-阶段-4maincleanup-详解>5.4 阶段 4：Main::cleanup() 详解</a></li></ul></li><li><a href=#6-与其他模块的交互>6. 与其他模块的交互</a><ul><li><a href=#61-启动流程涉及的模块>6.1 启动流程涉及的模块</a></li><li><a href=#62-关键交互点>6.2 关键交互点</a></li></ul></li><li><a href=#7-内存与生命周期>7. 内存与生命周期</a><ul><li><a href=#71-启动期间创建的对象>7.1 启动期间创建的对象</a></li><li><a href=#72-生命周期保证>7.2 生命周期保证</a></li></ul></li><li><a href=#8-线程模型>8. 线程模型</a><ul><li><a href=#81-启动阶段单线程>8.1 启动阶段（单线程）</a></li><li><a href=#82-主循环阶段>8.2 主循环阶段</a></li><li><a href=#83-线程同步>8.3 线程同步</a></li></ul></li><li><a href=#9-错误处理与日志>9. 错误处理与日志</a><ul><li><a href=#91-启动错误处理>9.1 启动错误处理</a></li><li><a href=#92-启动日志>9.2 启动日志</a></li></ul></li><li><a href=#10-配置与可扩展性>10. 配置与可扩展性</a><ul><li><a href=#101-命令行参数>10.1 命令行参数</a></li><li><a href=#102-项目设置>10.2 项目设置</a></li><li><a href=#103-扩展点>10.3 扩展点</a></li></ul></li><li><a href=#11-性能考量>11. 性能考量</a><ul><li><a href=#111-启动性能>11.1 启动性能</a></li><li><a href=#112-主循环性能>11.2 主循环性能</a></li></ul></li><li><a href=#12-调试技巧>12. 调试技巧</a><ul><li><a href=#121-启动调试>12.1 启动调试</a></li><li><a href=#122-启动崩溃排查>12.2 启动崩溃排查</a></li><li><a href=#123-性能分析>12.3 性能分析</a></li></ul></li><li><a href=#13-常见陷阱>13. 常见陷阱</a><ul><li><a href=#131-主场景未设置>13.1 主场景未设置</a></li><li><a href=#132-渲染后端不支持>13.2 渲染后端不支持</a></li><li><a href=#133-模块依赖缺失>13.3 模块依赖缺失</a></li><li><a href=#134-资源路径错误>13.4 资源路径错误</a></li><li><a href=#135-启动时崩溃>13.5 启动时崩溃</a></li></ul></li><li><a href=#14-源码阅读建议>14. 源码阅读建议</a><ul><li><a href=#141-推荐阅读顺序>14.1 推荐阅读顺序</a></li><li><a href=#142-实践建议>14.2 实践建议</a></li><li><a href=#143-关键断点>14.3 关键断点</a></li></ul></li><li><a href=#15-参考与延伸>15. 参考与延伸</a><ul><li><a href=#151-关键源码索引>15.1 关键源码索引</a></li><li><a href=#152-相关文档>15.2 相关文档</a></li><li><a href=#153-启动流程时序图>15.3 启动流程时序图</a></li></ul></li></ul></nav></aside></div></main><footer class=site-footer><div class=footer-inner><p>&copy; 2023–2026 你的名字. 保留所有权利。</p><div class=footer-meta></div></div></footer><script defer src=https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js crossorigin=anonymous></script><script defer src=https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js crossorigin=anonymous></script><script>document.addEventListener("DOMContentLoaded",function(){typeof katex!="undefined"&&document.querySelectorAll(".katex-block[data-math]").forEach(function(e){try{katex.render(e.textContent,e,{displayMode:!0,throwOnError:!1})}catch{}}),typeof renderMathInElement=="function"&&renderMathInElement(document.body,{delimiters:[{left:"$$",right:"$$",display:!0},{left:"\\[",right:"\\]",display:!0},{left:"$",right:"$",display:!1},{left:"\\(",right:"\\)",display:!1}],ignoredTags:["script","noscript","style","textarea","pre","code"],throwOnError:!1})})</script><script src=/js/main.min.d67c76b16258bc785c9a7bda52b7326bf67bb61290c8e66e975ed27a7330b4c9.js integrity="sha256-1nx2sWJYvHhcmnvaUrcya/Z7thKQyOZul17SenMwtMk=" defer></script></body></html>
