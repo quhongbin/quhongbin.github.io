@@ -1,0 +1,215 @@
+<!doctype html><html lang=zh-CN dir=ltr><head><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><meta name=color-scheme content="light dark"><meta name=theme-color content="#08111f" media="(prefers-color-scheme: dark)"><meta name=theme-color content="#fff5e1" media="(prefers-color-scheme: light)"><script>document.documentElement.classList.add("js"),function(){try{var e,t=localStorage.getItem("site-theme");t==="light"||t==="dark"?document.documentElement.setAttribute("data-theme",t):document.documentElement.setAttribute("data-theme",window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"),e=localStorage.getItem("site-palette"),(e==="macos"||e==="github"||e==="gruvbox")&&document.documentElement.setAttribute("data-palette",e)}catch{}}()</script><title>Process IO operations · 我的博客</title><meta name=description content='一、I/O 子系统概述 1.1 什么是 I/O I/O（输入/输出） 是计算机与外部设备之间交换信息的过程:
+输入 ：键盘输入、磁盘读、网络收包 输出 ：显示器输出、磁盘写、网络发包 1.2 I/O 系统层次结构 flowchart TB A["用户程序<br/>printf / fread / socket"] B["用户空间 I/O 软件<br/>C 标准库、系统调用封装"] C["设备无关 I/O 层<br/>文件系统、VFS、协议栈"] D["设备驱动程序<br/>与具体设备交互"] E["中断服务程序<br/>处理设备中断"] F["I/O 硬件<br/>设备控制器、外部设备"] A --> B --> C --> D --> E --> F 1.3 三种 I/O 控制方式 flowchart LR subgraph 查询["程序查询方式"] Q1["CPU 轮询设备状态"] --> Q2["等待就绪"] end subgraph 中断["中断驱动方式"] I1["CPU 做自己的事"] --> I2["设备就绪 → 发中断"] I2 --> I3["CPU 响应中断处理"] end subgraph DMA["DMA 方式"] D1["CPU 设置 DMA 参数"] --> D2["DMA 直接传数据"] D2 --> D3["完成后发中断"] end 方式 CPU 干预 适用场景 程序查询 最多（轮询等待） 简单、低速设备 中断驱动 中等（中断时处理） 中速设备 DMA 最少（仅初始化和完成） 高速大块数据传输 二、用户空间 I/O 软件 2.1 系统级 I/O vs 标准 I/O flowchart TD A["应用程序"] --> B["标准 I/O 库<br/>printf / fread / fwrite"] B --> C{"用户缓冲区<br/>是否满/刷新?"} C -->|否| B C -->|是| D["系统调用<br/>read / write"] D --> E["内核"] E --> F["设备驱动 → 硬件"] 类型 函数 缓冲 系统调用次数 系统级 I/O open / read / write / close 无缓冲 每次调用一次 标准 I/O fopen / fread / fwrite 用户态缓冲 缓冲满才调用 2.2 文件描述符 在 Unix/Linux 中， 一切皆文件 ：普通文件、目录、设备、管道、Socket、符号链接。
+'><meta name=author content="你的名字"><link rel=canonical href=https://quhongbin.github.io/cs/org-arch/processio/><link rel=alternate hreflang=zh-CN href=https://quhongbin.github.io/cs/org-arch/processio/><meta property="og:type" content="article"><meta property="og:title" content="Process IO operations · 我的博客"><meta property="og:description" content='一、I/O 子系统概述 1.1 什么是 I/O I/O（输入/输出） 是计算机与外部设备之间交换信息的过程:
+输入 ：键盘输入、磁盘读、网络收包 输出 ：显示器输出、磁盘写、网络发包 1.2 I/O 系统层次结构 flowchart TB A["用户程序<br/>printf / fread / socket"] B["用户空间 I/O 软件<br/>C 标准库、系统调用封装"] C["设备无关 I/O 层<br/>文件系统、VFS、协议栈"] D["设备驱动程序<br/>与具体设备交互"] E["中断服务程序<br/>处理设备中断"] F["I/O 硬件<br/>设备控制器、外部设备"] A --> B --> C --> D --> E --> F 1.3 三种 I/O 控制方式 flowchart LR subgraph 查询["程序查询方式"] Q1["CPU 轮询设备状态"] --> Q2["等待就绪"] end subgraph 中断["中断驱动方式"] I1["CPU 做自己的事"] --> I2["设备就绪 → 发中断"] I2 --> I3["CPU 响应中断处理"] end subgraph DMA["DMA 方式"] D1["CPU 设置 DMA 参数"] --> D2["DMA 直接传数据"] D2 --> D3["完成后发中断"] end 方式 CPU 干预 适用场景 程序查询 最多（轮询等待） 简单、低速设备 中断驱动 中等（中断时处理） 中速设备 DMA 最少（仅初始化和完成） 高速大块数据传输 二、用户空间 I/O 软件 2.1 系统级 I/O vs 标准 I/O flowchart TD A["应用程序"] --> B["标准 I/O 库<br/>printf / fread / fwrite"] B --> C{"用户缓冲区<br/>是否满/刷新?"} C -->|否| B C -->|是| D["系统调用<br/>read / write"] D --> E["内核"] E --> F["设备驱动 → 硬件"] 类型 函数 缓冲 系统调用次数 系统级 I/O open / read / write / close 无缓冲 每次调用一次 标准 I/O fopen / fread / fwrite 用户态缓冲 缓冲满才调用 2.2 文件描述符 在 Unix/Linux 中， 一切皆文件 ：普通文件、目录、设备、管道、Socket、符号链接。
+'><meta property="og:url" content="https://quhongbin.github.io/cs/org-arch/processio/"><meta property="og:site_name" content="我的博客"><link rel=stylesheet href=/css/main.min.5664322d273b99bd3145ea73ab5faaff04a3f3bc10723ece2fa57bb9315ef6da.css integrity="sha256-VmQyLSc7mb0xRepzq1+q/wSj87wQcj7OL6V7uTFe9to="><link rel=stylesheet href=/css/site-palettes.min.0f2ed388ed0b74ab72dcd2b144a6a19acbd23a4edca157c36eecdffad3dfe7bf.css integrity="sha256-Dy7TiO0LdKty3NKxRKahmsvSOk7coVfDbuzf+tPf578="><link rel=stylesheet href=/css/code-themes.min.78bd37b0419e6af001a97d6754f5264cacc1413c97b2e5d67033547083130a12.css integrity="sha256-eL03sEGeavABqX1nVPUmTKzBQTyXsuXWcDNUcIMTChI="><link rel=stylesheet href=https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css crossorigin=anonymous><style>:root{--content-width:1400px;--article-width:1100px;--toc-width:250px;--article-pad:clamp(25px, 6vw, 72px)}</style><link rel=icon href=/images/avatar.webp></head><body class=page-kind-page><a class=skip-link href=#main-content>跳到正文</a><div class=site-background aria-hidden=true></div><header class=site-header data-site-header><div class=header-inner><a class=site-brand href=/ aria-label=我的博客><img class=brand-avatar src=/images/avatar.webp alt width=44 height=44>
+<span class=brand-copy><strong>我的博客</strong>
+<small>在代码与生活之间</small>
+</span></a><button class=menu-toggle type=button aria-expanded=false aria-controls=site-navigation data-menu-toggle>
+<span class=menu-toggle-lines aria-hidden=true></span>
+<span class=sr-only>打开或关闭菜单</span></button><nav id=site-navigation class=site-navigation aria-label=主导航 data-navigation><ul class=nav-menu><li><a href=/>首页</a></li><li class="nav-item has-categories" data-categories-item><a href=/posts/ data-categories-trigger aria-haspopup=true>文章</a><ul class=categories-dropdown><li class=categories-all><a href=/posts/>全部文章</a></li><li><a href=/categories/godot/><span class=cat-name>Godot</span>
+<span class=term-count>8</span></a></li><li><a href=/categories/cs-architecture/><span class=cat-name>Cs-Architecture</span>
+<span class=term-count>7</span></a></li><li><a href=/categories/linux-coffee/><span class=cat-name>Linux Coffee</span>
+<span class=term-count>2</span></a></li><li><a href=/categories/math/><span class=cat-name>Math</span>
+<span class=term-count>2</span></a></li><li><a href=/categories/algorithm/><span class=cat-name>Algorithm</span>
+<span class=term-count>1</span></a></li><li><a href=/categories/data-struct/><span class=cat-name>Data Struct</span>
+<span class=term-count>1</span></a></li></ul></li><li><a href=/notes/>速记</a></li><li><a href=/tags/>标签</a></li><li><a href=/logs/>日志</a></li><li><a href=/about/>关于</a></li></ul><div class=header-social aria-label=社交链接><a href=https://github.com/your-name title=GitHub aria-label=GitHub target=_blank rel="noopener noreferrer"><svg class="icon icon-github" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 .7A11.5 11.5.0 008.36 23.11c.58.11.79-.25.79-.56v-2.23c-3.22.7-3.9-1.37-3.9-1.37-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.71.08-.71 1.17.08 1.78 1.2 1.78 1.2 1.04 1.78 2.72 1.27 3.38.97.1-.75.4-1.27.74-1.56-2.57-.29-5.27-1.28-5.27-5.68.0-1.25.45-2.28 1.19-3.08-.12-.29-.52-1.46.11-3.04.0.0.97-.31 3.16 1.18a10.98 10.98.0 015.76.0c2.19-1.49 3.15-1.18 3.15-1.18.63 1.58.23 2.75.11 3.04.74.8 1.19 1.83 1.19 3.08.0 4.41-2.71 5.38-5.29 5.67.42.36.79 1.07.79 2.16v3.2c0 .31.21.68.8.56A11.5 11.5.0 0012 .7z"/></svg>
+</a><a href=mailto:hello@example.com title=Email aria-label=Email><svg class="icon icon-email" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 4h18a2 2 0 012 2v12a2 2 0 01-2 2H3a2 2 0 01-2-2V6a2 2 0 012-2zm0 2 9 6 9-6H3zm18 12V8.4l-9 6-9-6V18h18z"/></svg></a></div><div class=theme-picker><button class=theme-toggle type=button data-theme-toggle aria-label="切换亮色 / 暗色主题" title="切换亮色 / 暗色主题">
+<svg class="icon icon-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><g stroke-linecap="round"><line x1="12" y1="2.5" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="21.5"/><line x1="2.5" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="21.5" y2="12"/><line x1="5.2" y1="5.2" x2="6.95" y2="6.95"/><line x1="17.05" y1="17.05" x2="18.8" y2="18.8"/><line x1="5.2" y1="18.8" x2="6.95" y2="17.05"/><line x1="17.05" y1="6.95" x2="18.8" y2="5.2"/></g></svg>
+<svg class="icon icon-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 019.5 4a.5.5.0 00-.78-.55 9.5 9.5.0 1011.83 11.83.5.5.0 00-.55-.78z"/></svg></button><div class=palette-menu role=group aria-label=主题配色><strong>主题配色</strong><div class=palette-group-label>亮色</div><button class=palette-option type=button data-palette-value=default data-palette-mode=light>站点默认 · 亮色</button>
+<button class=palette-option type=button data-palette-value=macos data-palette-mode=light>macOS · 亮色</button>
+<button class=palette-option type=button data-palette-value=github data-palette-mode=light>GitHub · 亮色</button>
+<button class=palette-option type=button data-palette-value=gruvbox data-palette-mode=light>Gruvbox · 亮色</button><div class=palette-group-label>暗色</div><button class=palette-option type=button data-palette-value=default data-palette-mode=dark>站点默认 · 暗色</button>
+<button class=palette-option type=button data-palette-value=macos data-palette-mode=dark>macOS · 暗色</button>
+<button class=palette-option type=button data-palette-value=github data-palette-mode=dark>GitHub · 暗色</button>
+<button class=palette-option type=button data-palette-value=gruvbox data-palette-mode=dark>Gruvbox · 暗色</button></div></div><details class=language-switcher><summary aria-label=选择语言><span aria-hidden=true>文/A</span>
+<span>简体中文</span></summary><ul><li><a href=/cs/org-arch/processio/ lang=zh-CN aria-current=true>简体中文</a></li></ul></details></nav></div></header><main id=main-content class=site-main><div class=article-layout><article class="article glass-panel reveal"><div class=reading-progress aria-hidden=true><span data-reading-progress></span></div><header class=article-header><a class=back-link href=/cs/>← 返回列表</a><h1>Process IO operations</h1><div class=article-meta><time datetime=2026-09-11>September 11, 2026</time>
+<span>阅读约 8 分钟</span>
+<span>3933 字</span></div><div class=tag-list><a class=tag href=/tags/computer-organization-and-architecture/>#Computer Organization and Architecture</a></div></header><div class="prose article-content" data-article-content><h2 id=一-i-o-子系统概述>一、I/O 子系统概述</h2><h3 id=1-dot-1-什么是-i-o>1.1 什么是 I/O</h3><p><strong>I/O（输入/输出）</strong> 是计算机与外部设备之间交换信息的过程:</p><ul><li><strong>输入</strong> ：键盘输入、磁盘读、网络收包</li><li><strong>输出</strong> ：显示器输出、磁盘写、网络发包</li></ul><h3 id=1-dot-2-i-o-系统层次结构>1.2 I/O 系统层次结构</h3><div class=mermaid data-mermaid>flowchart TB
+A["用户程序&lt;br/>printf / fread / socket"]
+B["用户空间 I/O 软件&lt;br/>C 标准库、系统调用封装"]
+C["设备无关 I/O 层&lt;br/>文件系统、VFS、协议栈"]
+D["设备驱动程序&lt;br/>与具体设备交互"]
+E["中断服务程序&lt;br/>处理设备中断"]
+F["I/O 硬件&lt;br/>设备控制器、外部设备"]
+A --> B --> C --> D --> E --> F</div><h3 id=1-dot-3-三种-i-o-控制方式>1.3 三种 I/O 控制方式</h3><div class=mermaid data-mermaid>flowchart LR
+subgraph 查询["程序查询方式"]
+Q1["CPU 轮询设备状态"] --> Q2["等待就绪"]
+end
+subgraph 中断["中断驱动方式"]
+I1["CPU 做自己的事"] --> I2["设备就绪 → 发中断"]
+I2 --> I3["CPU 响应中断处理"]
+end
+subgraph DMA["DMA 方式"]
+D1["CPU 设置 DMA 参数"] --> D2["DMA 直接传数据"]
+D2 --> D3["完成后发中断"]
+end</div><table><thead><tr><th>方式</th><th>CPU 干预</th><th>适用场景</th></tr></thead><tbody><tr><td>程序查询</td><td>最多（轮询等待）</td><td>简单、低速设备</td></tr><tr><td>中断驱动</td><td>中等（中断时处理）</td><td>中速设备</td></tr><tr><td>DMA</td><td>最少（仅初始化和完成）</td><td>高速大块数据传输</td></tr></tbody></table><hr><h2 id=二-用户空间-i-o-软件>二、用户空间 I/O 软件</h2><h3 id=2-dot-1-系统级-i-o-vs-标准-i-o>2.1 系统级 I/O vs 标准 I/O</h3><div class=mermaid data-mermaid>flowchart TD
+A["应用程序"] --> B["标准 I/O 库&lt;br/>printf / fread / fwrite"]
+B --> C{"用户缓冲区&lt;br/>是否满/刷新?"}
+C -->|否| B
+C -->|是| D["系统调用&lt;br/>read / write"]
+D --> E["内核"]
+E --> F["设备驱动 → 硬件"]</div><table><thead><tr><th>类型</th><th>函数</th><th>缓冲</th><th>系统调用次数</th></tr></thead><tbody><tr><td>系统级 I/O</td><td><code>open</code> / <code>read</code> / <code>write</code> / <code>close</code></td><td>无缓冲</td><td>每次调用一次</td></tr><tr><td>标准 I/O</td><td><code>fopen</code> / <code>fread</code> / <code>fwrite</code></td><td>用户态缓冲</td><td>缓冲满才调用</td></tr></tbody></table><h3 id=2-dot-2-文件描述符>2.2 文件描述符</h3><p>在 Unix/Linux 中， <strong>一切皆文件</strong> ：普通文件、目录、设备、管道、Socket、符号链接。</p><p>进程启动时默认打开三个文件描述符：</p><table><thead><tr><th>描述符</th><th>名称</th><th>流向</th></tr></thead><tbody><tr><td>0</td><td>stdin（标准输入）</td><td>键盘 → 程序</td></tr><tr><td>1</td><td>stdout（标准输出）</td><td>程序 → 屏幕</td></tr><tr><td>2</td><td>stderr（标准错误）</td><td>程序 → 屏幕</td></tr></tbody></table><h3 id=2-dot-3-标准-i-o-的缓冲类型>2.3 标准 I/O 的缓冲类型</h3><table><thead><tr><th>缓冲类型</th><th>触发条件</th><th>示例</th></tr></thead><tbody><tr><td>全缓冲</td><td>缓冲区满才实际 I/O</td><td>普通文件</td></tr><tr><td>行缓冲</td><td>遇到换行符才实际 I/O</td><td>终端 stdout</td></tr><tr><td>无缓冲</td><td>每次都实际 I/O</td><td>stderr</td></tr></tbody></table><hr><h2 id=三-内核空间-i-o-软件>三、内核空间 I/O 软件</h2><h3 id=3-dot-1-设备无关-i-o-层>3.1 设备无关 I/O 层</h3><p>通过 <strong>VFS（虚拟文件系统）</strong> 提供统一接口：</p><div class=mermaid data-mermaid>flowchart TB
+subgraph VFS["VFS 统一接口"]
+open["open"]
+read["read"]
+write["write"]
+close["close"]
+ioctl["ioctl"]
+end
+VFS --> A["EXT4 / XFS 文件"]
+VFS --> B["块设备（磁盘）"]
+VFS --> C["字符设备（终端）"]
+VFS --> D["Socket（网络）"]
+VFS --> E["管道（Pipe）"]</div><h3 id=3-dot-2-设备分类与驱动>3.2 设备分类与驱动</h3><table><thead><tr><th>类型</th><th>访问方式</th><th>示例</th></tr></thead><tbody><tr><td>字符设备</td><td>按字节流顺序访问</td><td>键盘、串口、终端</td></tr><tr><td>块设备</td><td>按块随机访问</td><td>磁盘、SSD</td></tr><tr><td>网络设备</td><td>面向数据包</td><td>网卡</td></tr></tbody></table><p><strong>驱动加载方式</strong> ：</p><ul><li>静态编译进内核</li><li>动态加载（ <code>.ko</code> 模块）： <code>insmod</code> / <code>modprobe</code></li></ul><h3 id=3-dot-3-中断上半部与下半部>3.3 中断上半部与下半部</h3><div class=mermaid data-mermaid>flowchart LR
+subgraph 上半部["上半部（Top Half）"]
+A1["关中断"] --> A2["快速应答设备"]
+A2 --> A3["读取关键数据"]
+end
+subgraph 下半部["下半部（Bottom Half）"]
+B1["开中断"] --> B2["处理协议逻辑"]
+B2 --> B3["唤醒等待进程"]
+end
+上半部 -->|立即执行| 下半部
+下半部 -.->|延迟执行| 下半部</div><table><thead><tr><th>机制</th><th>特点</th></tr></thead><tbody><tr><td>软中断（softirq）</td><td>可并发，性能高</td></tr><tr><td>tasklet</td><td>串行执行，简单</td></tr><tr><td>工作队列（workqueue）</td><td>可睡眠，最灵活</td></tr></tbody></table><hr><h2 id=四-i-o-硬件与软件接口>四、I/O 硬件与软件接口</h2><h3 id=4-dot-1-总线互连结构>4.1 总线互连结构</h3><div class=mermaid data-mermaid>flowchart TB
+CPU["CPU"] --> 系统总线["系统总线&lt;br/>(QPI / UPI)"]
+内存["主存"] --> 系统总线
+系统总线 --> 桥["PCIe 桥"]
+桥 --> PCIe["PCIe 总线"]
+PCIe --> GPU["显卡 x16"]
+PCIe --> NVMe["NVMe SSD x4"]
+PCIe --> NIC["网卡 x1"]
+PCIe --> USB["USB 控制器"]
+PCIe --> SATA["SATA 控制器"]</div><h3 id=4-dot-2-i-o-接口的寄存器>4.2 I/O 接口的寄存器</h3><div class=mermaid data-mermaid>flowchart LR
+subgraph IOCtrl["I/O 控制器"]
+数据["数据寄存器&lt;br/>缓冲数据"]
+控制["控制寄存器&lt;br/>接收 CPU 命令"]
+状态["状态寄存器&lt;br/>设备状态（忙/就绪/错误）"]
+end
+CPU["CPU"] -->|命令| 控制
+CPU -->|读状态| 状态
+CPU &lt;-->|数据| 数据</div><h3 id=4-dot-3-两种-i-o-编址方式>4.3 两种 I/O 编址方式</h3><table><thead><tr><th>编址方式</th><th>说明</th><th>访问指令</th><th>代表架构</th></tr></thead><tbody><tr><td>独立编址</td><td>I/O 端口独立地址空间</td><td><code>in</code> / <code>out</code> 专用指令</td><td>x86</td></tr><tr><td>统一编址（MMIO）</td><td>端口映射到内存地址空间</td><td>普通访存指令</td><td>ARM、MIPS、RISC-V</td></tr></tbody></table><h3 id=4-dot-4-中断系统>4.4 中断系统</h3><div class=mermaid data-mermaid>flowchart LR
+A["设备发中断"] --> B["CPU 在指令结束时检查"]
+B --> C["保存现场&lt;br/>PC、PSW 压栈"]
+C --> D["查中断向量表&lt;br/>找 ISR 入口"]
+D --> E["执行中断服务程序"]
+E --> F["恢复现场"]
+F --> G["iret 返回"]</div><p><strong>现代中断控制器</strong> ：</p><ul><li><strong>APIC</strong> ：Local APIC（每核一个）+ I/O APIC（设备中断路由）</li><li><strong>MSI/MSI-X</strong> ：写内存地址触发中断，无需引脚</li><li><strong>中断亲和性</strong> ：将中断绑定到指定 CPU 核</li></ul><hr><h2 id=五-现代技术扩展>五、现代技术扩展</h2><h3 id=5-dot-1-io-uring-新一代异步-i-o>5.1 io_uring：新一代异步 I/O</h3><div class=mermaid data-mermaid>flowchart LR
+subgraph 用户态["用户态"]
+SQ["提交队列 SQ"]
+CQ["完成队列 CQ"]
+end
+subgraph 内核态["内核态"]
+Engine["io_uring 内核引擎"]
+end
+SQ -->|提交请求| Engine
+Engine -->|完成事件| CQ
+SQ -.->|mmap 共享| Engine
+CQ -.->|mmap 共享| Engine</div><ul><li>Linux 5.1+ 引入，两个共享环形缓冲区</li><li><strong>无需系统调用</strong> 即可提交 I/O（mmap 共享）</li><li>支持文件、网络、定时器等所有 I/O 类型</li><li>性能远超 epoll + 线程池</li></ul><h3 id=5-dot-2-零拷贝技术>5.2 零拷贝技术</h3><div class=mermaid data-mermaid>flowchart LR
+subgraph 传统["传统 read+write"]
+direction LR
+D1["磁盘"] --> K1["内核缓冲区"]
+K1 --> U1["用户缓冲区"]
+U1 --> S1["Socket 缓冲区"]
+S1 --> N1["网卡"]
+end
+subgraph 零拷贝["sendfile 零拷贝"]
+direction LR
+D2["磁盘"] --> K2["内核缓冲区"]
+K2 --> S2["Socket 缓冲区"]
+S2 --> N2["网卡 DMA"]
+end</div><table><thead><tr><th>技术</th><th>原理</th></tr></thead><tbody><tr><td><code>mmap</code></td><td>文件映射到用户空间，减少一次拷贝</td></tr><tr><td><code>sendfile</code></td><td>内核内直接从文件传到 socket</td></tr><tr><td><code>splice</code></td><td>两个 fd 间零拷贝数据移动</td></tr><tr><td>DMA</td><td>网卡直接从内存取数据</td></tr></tbody></table><h3 id=5-dot-3-高性能网络-i-o>5.3 高性能网络 I/O</h3><div class=mermaid data-mermaid>flowchart TB
+subgraph 传统["传统网络栈"]
+A1["网卡"] --> A2["内核协议栈"]
+A2 --> A3["系统调用"]
+A3 --> A4["应用"]
+end
+subgraph DPDK["DPDK 用户态驱动"]
+B1["网卡"] --> B2["PMD 轮询&lt;br/>绕过内核"]
+B2 --> B3["用户态应用"]
+end</div><ul><li><strong>DPDK</strong> ：绕过内核协议栈，用户态直接驱动网卡，PMD 轮询模式</li><li><strong>RDMA</strong> ：远程直接内存访问，零内核参与，超低延迟</li><li><strong>XDP</strong> ：在网卡驱动层（协议栈前）运行 eBPF 程序，极速包处理</li></ul><h3 id=5-dot-4-ebpf-内核可编程>5.4 eBPF：内核可编程</h3><ul><li>不修改内核代码、不加载内核模块，即可在内核运行沙箱程序</li><li>应用：网络过滤、性能分析、安全监控、可观测性</li><li>工具：bpftrace、BCC、Cilium</li></ul><h3 id=5-dot-5-nvme-与现代存储>5.5 NVMe 与现代存储</h3><div class=mermaid data-mermaid>flowchart LR
+subgraph SATA["SATA SSD"]
+S1["单队列"]
+S2["深度 ~32"]
+end
+subgraph NVMe["NVMe SSD"]
+N1["65535 队列"]
+N2["每队列 65535 命令"]
+N3["PCIe 通道"]
+end</div><ul><li><strong>NVMe</strong> ：基于 PCIe，多队列并行，延迟远低于 SATA</li><li><strong>NVMe-oF</strong> ：通过网络（RoCE/TCP）访问远程 NVMe</li><li><strong>IO 调度器</strong> ：SSD 用 NOOP/NONE，HDD 用 Deadline/CFQ</li></ul><h3 id=5-dot-6-设备虚拟化>5.6 设备虚拟化</h3><table><thead><tr><th>方案</th><th>原理</th><th>性能</th></tr></thead><tbody><tr><td>全虚拟化</td><td>QEMU 模拟设备</td><td>慢</td></tr><tr><td>半虚拟化（virtio）</td><td>Guest 用 virtio 驱动</td><td>中</td></tr><tr><td>直通（Passthrough）</td><td>物理设备分给 VM</td><td>接近原生</td></tr><tr><td>SR-IOV</td><td>一个物理设备虚拟多个 VF</td><td>接近原生</td></tr></tbody></table><hr><h2 id=六-本章练习题>六、本章练习题</h2><h3 id=一-单项选择题>一、单项选择题</h3><ol><li><p>Unix/Linux 标准输入的文件描述符是？</p><ul><li>A. 0</li><li>B. 1</li><li>C. 2</li><li>D. 3</li></ul></li><li><p>CPU 干预最少的 I/O 方式是？</p><ul><li>A. 程序查询</li><li>B. 中断驱动</li><li>C. DMA</li><li>D. 一样</li></ul></li><li><p>终端 stdout 通常使用哪种缓冲？</p><ul><li>A. 全缓冲</li><li>B. 行缓冲</li><li>C. 无缓冲</li><li>D. 单字节</li></ul></li><li><p>x86 的 I/O 端口编址方式是？</p><ul><li>A. 统一编址</li><li>B. 独立编址</li><li>C. 混合编址</li><li>D. 段式编址</li></ul></li><li><p>以下哪个是字符设备？</p><ul><li>A. 磁盘</li><li>B. SSD</li><li>C. 网卡</li><li>D. 键盘</li></ul></li><li><p>Linux 中断处理中，紧急快速完成的部分是？</p><ul><li>A. 下半部</li><li>B. 上半部</li><li>C. tasklet</li><li>D. 工作队列</li></ul></li><li><p>PCIe 属于哪种总线？</p><ul><li>A. 片内总线</li><li>B. 系统总线</li><li>C. I/O 总线</li><li>D. 前端总线</li></ul></li><li><p>io_uring 的核心数据结构是？</p><ul><li>A. 链表</li><li>B. 环形缓冲区</li><li>C. 红黑树</li><li>D. 哈希表</li></ul></li></ol><h3 id=二-简答题>二、简答题</h3><ol><li><p>比较程序查询、中断驱动、DMA 三种 I/O 控制方式。</p></li><li><p>系统级 I/O 与标准 I/O 库有何区别？</p></li><li><p>什么是 MMIO？与独立编址 I/O 端口有何不同？</p></li><li><p>简述中断上半部与下半部机制及设计原因。</p></li><li><p>什么是零拷贝？列举两种技术并说明原理。</p></li></ol><h3 id=三-综合应用题>三、综合应用题</h3><ol><li><p>程序要将 1GB 文件通过网络发送：</p><ul><li>(1) 传统 read+write 需几次数据拷贝？</li><li>(2) sendfile 可减少几次？</li><li>(3) 网卡支持 DMA 零拷贝还能如何优化？</li></ul></li><li><p>CPU 2GHz，每次中断处理 1000 周期，设备每秒 10000 次中断：</p><ul><li>(1) 中断处理占比？</li><li>(2) 改 DMA，每 4KB 一次中断，100MB/s 传输，占比？</li><li>(3) 得出什么结论？</li></ul></li><li><p>简述从 <code>printf("hello\n")</code> 到字符显示在屏幕上的完整过程。</p></li></ol><hr><h2 id=参考答案>参考答案</h2><h3 id=选择题>选择题</h3><ol><li>A 2. C 3. B 4. B 5. D 6. B 7. C 8. B</li></ol><h3 id=简答题要点>简答题要点</h3><ol><li>查询：CPU 轮询，利用率低；中断：设备就绪发中断，利用率较高；DMA：控制器直接传输，CPU 干预最少。</li><li>系统 I/O 无缓冲，每次系统调用；标准 I/O 用户态缓冲，减少系统调用次数。</li><li>MMIO 将设备寄存器映射到内存地址空间，用访存指令；独立编址用专用 in/out 指令。</li><li>上半部关中断快速处理紧急事，下半部开中断延迟处理非急事，减少关中断时间。</li><li>减少数据在内存中的拷贝。sendfile：内核内文件直接到 socket；mmap：文件映射到用户空间。</li></ol></div><footer class=article-footer><span>归档于</span>
+<a href=/categories/cs-architecture/>Cs-Architecture</a></footer></article><aside class="toc glass-panel" aria-label=文章目录><strong>本文目录</strong><nav id=TableOfContents><ul><li><a href=#一-i-o-子系统概述>一、I/O 子系统概述</a><ul><li><a href=#1-dot-1-什么是-i-o>1.1 什么是 I/O</a></li><li><a href=#1-dot-2-i-o-系统层次结构>1.2 I/O 系统层次结构</a></li><li><a href=#1-dot-3-三种-i-o-控制方式>1.3 三种 I/O 控制方式</a></li></ul></li><li><a href=#二-用户空间-i-o-软件>二、用户空间 I/O 软件</a><ul><li><a href=#2-dot-1-系统级-i-o-vs-标准-i-o>2.1 系统级 I/O vs 标准 I/O</a></li><li><a href=#2-dot-2-文件描述符>2.2 文件描述符</a></li><li><a href=#2-dot-3-标准-i-o-的缓冲类型>2.3 标准 I/O 的缓冲类型</a></li></ul></li><li><a href=#三-内核空间-i-o-软件>三、内核空间 I/O 软件</a><ul><li><a href=#3-dot-1-设备无关-i-o-层>3.1 设备无关 I/O 层</a></li><li><a href=#3-dot-2-设备分类与驱动>3.2 设备分类与驱动</a></li><li><a href=#3-dot-3-中断上半部与下半部>3.3 中断上半部与下半部</a></li></ul></li><li><a href=#四-i-o-硬件与软件接口>四、I/O 硬件与软件接口</a><ul><li><a href=#4-dot-1-总线互连结构>4.1 总线互连结构</a></li><li><a href=#4-dot-2-i-o-接口的寄存器>4.2 I/O 接口的寄存器</a></li><li><a href=#4-dot-3-两种-i-o-编址方式>4.3 两种 I/O 编址方式</a></li><li><a href=#4-dot-4-中断系统>4.4 中断系统</a></li></ul></li><li><a href=#五-现代技术扩展>五、现代技术扩展</a><ul><li><a href=#5-dot-1-io-uring-新一代异步-i-o>5.1 io_uring：新一代异步 I/O</a></li><li><a href=#5-dot-2-零拷贝技术>5.2 零拷贝技术</a></li><li><a href=#5-dot-3-高性能网络-i-o>5.3 高性能网络 I/O</a></li><li><a href=#5-dot-4-ebpf-内核可编程>5.4 eBPF：内核可编程</a></li><li><a href=#5-dot-5-nvme-与现代存储>5.5 NVMe 与现代存储</a></li><li><a href=#5-dot-6-设备虚拟化>5.6 设备虚拟化</a></li></ul></li><li><a href=#六-本章练习题>六、本章练习题</a><ul><li><a href=#一-单项选择题>一、单项选择题</a></li><li><a href=#二-简答题>二、简答题</a></li><li><a href=#三-综合应用题>三、综合应用题</a></li></ul></li><li><a href=#参考答案>参考答案</a><ul><li><a href=#选择题>选择题</a></li><li><a href=#简答题要点>简答题要点</a></li></ul></li></ul></nav></aside></div></main><footer class=site-footer><div class=footer-inner><p>&copy; 2023–2026 你的名字. 保留所有权利。</p><div class=footer-meta></div></div></footer><script defer src=https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js crossorigin=anonymous></script><script defer src=https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js crossorigin=anonymous></script><script>document.addEventListener("DOMContentLoaded",function(){typeof katex!="undefined"&&document.querySelectorAll(".katex-block[data-math]").forEach(function(e){try{katex.render(e.textContent,e,{displayMode:!0,throwOnError:!1})}catch{}}),typeof renderMathInElement=="function"&&renderMathInElement(document.body,{delimiters:[{left:"$$",right:"$$",display:!0},{left:"\\[",right:"\\]",display:!0},{left:"$",right:"$",display:!1},{left:"\\(",right:"\\)",display:!1}],ignoredTags:["script","noscript","style","textarea","pre","code"],throwOnError:!1})})</script><script type=module>
+  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11.17.2/dist/mermaid.esm.min.mjs";
+
+  
+  
+  
+  const cfg = {"lineColor":"","lineStyle":"","lineWidth":"","nodeBg":"","nodeBorder":"","nodeRadius":"","nodeTextColor":""};
+
+  const nodes = Array.from(document.querySelectorAll(".mermaid[data-mermaid]"));
+  const sources = nodes.map((node) => node.textContent);
+  const isDark = () => document.documentElement.getAttribute("data-theme") === "dark";
+
+  
+  const cssVar = (name, fallback) =>
+    getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
+  
+  const pick = (key, fallback) => (cfg[key] || "").trim() || fallback;
+  
+  const dashArrays = { solid: "0", dashed: "6 5", dotted: "2 3" };
+
+  const draw = async () => {
+    const dark = isDark();
+    const accent = cssVar("--accent", dark ? "#6aa7ff" : "#2f7de1");
+    const textColor = pick("nodeTextColor", cssVar("--prose-text", dark ? "#e2e8f2" : "#283448"));
+    const radius = pick("nodeRadius", "10px");
+    const lineWidth = pick("lineWidth", "1.6px");
+    
+    
+    const clusterBg = dark ? "#101a2c" : "#ece7dc";
+    const lineColor = pick("lineColor", dark ? "#8fa5c6" : "#5a6b85");
+
+    mermaid.initialize({
+      startOnLoad: false,
+      securityLevel: "strict",
+      theme: "base",
+      themeVariables: {
+        primaryColor: pick("nodeBg", dark ? "#141f36" : "#ffffff"),
+        primaryBorderColor: pick("nodeBorder", accent),
+        nodeBorder: pick("nodeBorder", accent),
+        primaryTextColor: textColor,
+        nodeTextColor: textColor,
+        textColor: textColor,
+        lineColor: lineColor,
+        
+        edgeLabelBackground: cssVar("--code-bg", dark ? "#0b1220" : "#f3eee5")
+      },
+      themeCSS: `
+        .node rect { rx: ${radius} !important; ry: ${radius} !important; }
+        .edge-thickness-normal { stroke-width: ${lineWidth} !important; }
+        .edge-thickness-thick { stroke-width: calc(${lineWidth} * 2) !important; }
+        .edge-pattern-solid { stroke-dasharray: ${dashArrays[pick("lineStyle", "solid")] || "0"} !important; }
+        .cluster rect { fill: ${clusterBg} !important; stroke: ${lineColor} !important; }
+        .cluster-label, .cluster-label span { color: ${textColor} !important; }
+      `,
+      
+      fontFamily: getComputedStyle(document.body).fontFamily || "sans-serif"
+    });
+    
+    nodes.forEach((node, index) => {
+      node.textContent = sources[index];
+      node.removeAttribute("data-processed");
+    });
+    await mermaid.run({ nodes });
+  };
+
+  try {
+    await draw();
+    new MutationObserver(draw).observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["data-theme"]
+    });
+  } catch (error) {
+    
+    console.error("[mermaid] 渲染失败：", error);
+  }
+</script><script src=/js/main.min.d67c76b16258bc785c9a7bda52b7326bf67bb61290c8e66e975ed27a7330b4c9.js integrity="sha256-1nx2sWJYvHhcmnvaUrcya/Z7thKQyOZul17SenMwtMk=" defer></script></body></html>

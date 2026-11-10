@@ -1,0 +1,389 @@
+<!doctype html><html lang=zh-CN dir=ltr><head><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><meta name=color-scheme content="light dark"><meta name=theme-color content="#08111f" media="(prefers-color-scheme: dark)"><meta name=theme-color content="#fff5e1" media="(prefers-color-scheme: light)"><script>document.documentElement.classList.add("js"),function(){try{var e,t=localStorage.getItem("site-theme");t==="light"||t==="dark"?document.documentElement.setAttribute("data-theme",t):document.documentElement.setAttribute("data-theme",window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"),e=localStorage.getItem("site-palette"),(e==="macos"||e==="github"||e==="gruvbox")&&document.documentElement.setAttribute("data-palette",e)}catch{}}()</script><title>Machine Performance For Program · 我的博客</title><meta name=description content='程序的转换及机器级表示 本章学习地图 flowchart LR A["C语言源程序"] --> B["编译器"] B --> C["汇编程序"] C --> D["汇编器"] D --> E["机器代码"] E --> F["CPU按ISA执行"] G["IA-32指令系统"] --> H["数据格式"] G --> I["寄存器与寻址"] G --> J["机器指令格式"] G --> K["常用指令"] L["C语言机器级表示"] --> M["过程调用"] L --> N["选择与循环"] L --> O["数组、结构体、联合体"] O --> P["数据对齐"] G --> Q["x86-64扩展"] 本章有三条核心主线：
+'><meta name=author content="你的名字"><link rel=canonical href=https://quhongbin.github.io/cs/org-arch/machineperformance/><link rel=alternate hreflang=zh-CN href=https://quhongbin.github.io/cs/org-arch/machineperformance/><meta property="og:type" content="article"><meta property="og:title" content="Machine Performance For Program · 我的博客"><meta property="og:description" content='程序的转换及机器级表示 本章学习地图 flowchart LR A["C语言源程序"] --> B["编译器"] B --> C["汇编程序"] C --> D["汇编器"] D --> E["机器代码"] E --> F["CPU按ISA执行"] G["IA-32指令系统"] --> H["数据格式"] G --> I["寄存器与寻址"] G --> J["机器指令格式"] G --> K["常用指令"] L["C语言机器级表示"] --> M["过程调用"] L --> N["选择与循环"] L --> O["数组、结构体、联合体"] O --> P["数据对齐"] G --> Q["x86-64扩展"] 本章有三条核心主线：
+'><meta property="og:url" content="https://quhongbin.github.io/cs/org-arch/machineperformance/"><meta property="og:site_name" content="我的博客"><link rel=stylesheet href=/css/main.min.5664322d273b99bd3145ea73ab5faaff04a3f3bc10723ece2fa57bb9315ef6da.css integrity="sha256-VmQyLSc7mb0xRepzq1+q/wSj87wQcj7OL6V7uTFe9to="><link rel=stylesheet href=/css/site-palettes.min.0f2ed388ed0b74ab72dcd2b144a6a19acbd23a4edca157c36eecdffad3dfe7bf.css integrity="sha256-Dy7TiO0LdKty3NKxRKahmsvSOk7coVfDbuzf+tPf578="><link rel=stylesheet href=/css/code-themes.min.78bd37b0419e6af001a97d6754f5264cacc1413c97b2e5d67033547083130a12.css integrity="sha256-eL03sEGeavABqX1nVPUmTKzBQTyXsuXWcDNUcIMTChI="><link rel=stylesheet href=https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css crossorigin=anonymous><style>:root{--content-width:1400px;--article-width:1100px;--toc-width:250px;--article-pad:clamp(25px, 6vw, 72px)}</style><link rel=icon href=/images/avatar.webp></head><body class=page-kind-page><a class=skip-link href=#main-content>跳到正文</a><div class=site-background aria-hidden=true></div><header class=site-header data-site-header><div class=header-inner><a class=site-brand href=/ aria-label=我的博客><img class=brand-avatar src=/images/avatar.webp alt width=44 height=44>
+<span class=brand-copy><strong>我的博客</strong>
+<small>在代码与生活之间</small>
+</span></a><button class=menu-toggle type=button aria-expanded=false aria-controls=site-navigation data-menu-toggle>
+<span class=menu-toggle-lines aria-hidden=true></span>
+<span class=sr-only>打开或关闭菜单</span></button><nav id=site-navigation class=site-navigation aria-label=主导航 data-navigation><ul class=nav-menu><li><a href=/>首页</a></li><li class="nav-item has-categories" data-categories-item><a href=/posts/ data-categories-trigger aria-haspopup=true>文章</a><ul class=categories-dropdown><li class=categories-all><a href=/posts/>全部文章</a></li><li><a href=/categories/godot/><span class=cat-name>Godot</span>
+<span class=term-count>8</span></a></li><li><a href=/categories/cs-architecture/><span class=cat-name>Cs-Architecture</span>
+<span class=term-count>7</span></a></li><li><a href=/categories/linux-coffee/><span class=cat-name>Linux Coffee</span>
+<span class=term-count>2</span></a></li><li><a href=/categories/math/><span class=cat-name>Math</span>
+<span class=term-count>2</span></a></li><li><a href=/categories/algorithm/><span class=cat-name>Algorithm</span>
+<span class=term-count>1</span></a></li><li><a href=/categories/data-struct/><span class=cat-name>Data Struct</span>
+<span class=term-count>1</span></a></li></ul></li><li><a href=/notes/>速记</a></li><li><a href=/tags/>标签</a></li><li><a href=/logs/>日志</a></li><li><a href=/about/>关于</a></li></ul><div class=header-social aria-label=社交链接><a href=https://github.com/your-name title=GitHub aria-label=GitHub target=_blank rel="noopener noreferrer"><svg class="icon icon-github" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 .7A11.5 11.5.0 008.36 23.11c.58.11.79-.25.79-.56v-2.23c-3.22.7-3.9-1.37-3.9-1.37-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.71.08-.71 1.17.08 1.78 1.2 1.78 1.2 1.04 1.78 2.72 1.27 3.38.97.1-.75.4-1.27.74-1.56-2.57-.29-5.27-1.28-5.27-5.68.0-1.25.45-2.28 1.19-3.08-.12-.29-.52-1.46.11-3.04.0.0.97-.31 3.16 1.18a10.98 10.98.0 015.76.0c2.19-1.49 3.15-1.18 3.15-1.18.63 1.58.23 2.75.11 3.04.74.8 1.19 1.83 1.19 3.08.0 4.41-2.71 5.38-5.29 5.67.42.36.79 1.07.79 2.16v3.2c0 .31.21.68.8.56A11.5 11.5.0 0012 .7z"/></svg>
+</a><a href=mailto:hello@example.com title=Email aria-label=Email><svg class="icon icon-email" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 4h18a2 2 0 012 2v12a2 2 0 01-2 2H3a2 2 0 01-2-2V6a2 2 0 012-2zm0 2 9 6 9-6H3zm18 12V8.4l-9 6-9-6V18h18z"/></svg></a></div><div class=theme-picker><button class=theme-toggle type=button data-theme-toggle aria-label="切换亮色 / 暗色主题" title="切换亮色 / 暗色主题">
+<svg class="icon icon-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><g stroke-linecap="round"><line x1="12" y1="2.5" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="21.5"/><line x1="2.5" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="21.5" y2="12"/><line x1="5.2" y1="5.2" x2="6.95" y2="6.95"/><line x1="17.05" y1="17.05" x2="18.8" y2="18.8"/><line x1="5.2" y1="18.8" x2="6.95" y2="17.05"/><line x1="17.05" y1="6.95" x2="18.8" y2="5.2"/></g></svg>
+<svg class="icon icon-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 019.5 4a.5.5.0 00-.78-.55 9.5 9.5.0 1011.83 11.83.5.5.0 00-.55-.78z"/></svg></button><div class=palette-menu role=group aria-label=主题配色><strong>主题配色</strong><div class=palette-group-label>亮色</div><button class=palette-option type=button data-palette-value=default data-palette-mode=light>站点默认 · 亮色</button>
+<button class=palette-option type=button data-palette-value=macos data-palette-mode=light>macOS · 亮色</button>
+<button class=palette-option type=button data-palette-value=github data-palette-mode=light>GitHub · 亮色</button>
+<button class=palette-option type=button data-palette-value=gruvbox data-palette-mode=light>Gruvbox · 亮色</button><div class=palette-group-label>暗色</div><button class=palette-option type=button data-palette-value=default data-palette-mode=dark>站点默认 · 暗色</button>
+<button class=palette-option type=button data-palette-value=macos data-palette-mode=dark>macOS · 暗色</button>
+<button class=palette-option type=button data-palette-value=github data-palette-mode=dark>GitHub · 暗色</button>
+<button class=palette-option type=button data-palette-value=gruvbox data-palette-mode=dark>Gruvbox · 暗色</button></div></div><details class=language-switcher><summary aria-label=选择语言><span aria-hidden=true>文/A</span>
+<span>简体中文</span></summary><ul><li><a href=/cs/org-arch/machineperformance/ lang=zh-CN aria-current=true>简体中文</a></li></ul></details></nav></div></header><main id=main-content class=site-main><div class=article-layout><article class="article glass-panel reveal"><div class=reading-progress aria-hidden=true><span data-reading-progress></span></div><header class=article-header><a class=back-link href=/cs/>← 返回列表</a><h1>Machine Performance For Program</h1><div class=article-meta><time datetime=2026-09-09>September 9, 2026</time>
+<span>阅读约 18 分钟</span>
+<span>8959 字</span></div><div class=tag-list><a class=tag href=/tags/computer-organization-and-architecture/>#Computer Organization and Architecture</a></div></header><div class="prose article-content" data-article-content><h2 id=程序的转换及机器级表示>程序的转换及机器级表示</h2><h2 id=本章学习地图>本章学习地图</h2><div class=mermaid data-mermaid>flowchart LR
+A["C语言源程序"] --> B["编译器"]
+B --> C["汇编程序"]
+C --> D["汇编器"]
+D --> E["机器代码"]
+E --> F["CPU按ISA执行"]
+G["IA-32指令系统"] --> H["数据格式"]
+G --> I["寄存器与寻址"]
+G --> J["机器指令格式"]
+G --> K["常用指令"]
+L["C语言机器级表示"] --> M["过程调用"]
+L --> N["选择与循环"]
+L --> O["数组、结构体、联合体"]
+O --> P["数据对齐"]
+G --> Q["x86-64扩展"]</div><p>本章有三条核心主线：</p><ol><li><strong><strong>程序转换主线</strong></strong> ：高级语言如何经过编译、汇编而变为机器代码。</li><li><strong><strong>指令系统主线</strong></strong> ：一条指令怎样表示“做什么、对谁做、数据在哪里”。</li><li><strong><strong>高级结构降级主线</strong></strong> ：函数、条件、循环和复杂数据如何落到寄存器、存储器、栈和跳转指令上。</li></ol><p>教材使用寄存器传送语言RTL(Register Transport language)描述指令功能。本讲义采用如下简化记号：</p><ul><li><code>R[eax]</code> ：寄存器EAX的内容。</li><li><code>M[addr]</code> ：从地址 <code>addr</code> 开始的存储单元内容。</li><li><code>R[eax] &lt;- M[R[ebp]+4]</code> ：把 <code>EBP+4</code> 所指内存中的数据送入EAX。</li></ul><p>本文章使用IA-32指令集,AT&amp;T语法格式演示</p><p>同一个指令集拥有是不同的语法，但它们都会正确的翻译成对应的目标硬件的机器码。具体知识请查看<a href=/posts/2026/09/architecture/#一-核心问题-什么是-架构>架构</a></p><p>在Intel语法中，靠括号[]来区分内存（mov eax, [ebx]），寄存器直接写。
+在AT&amp;T语法中，靠前缀%来区分寄存器（movl (%ebx), %eax），内存靠括号。</p><hr><h3 id=1-程序转换概述>1 程序转换概述</h3><h4 id=1-dot-1-机器指令及汇编指令>1.1 机器指令及汇编指令</h4><ul><li><p>核心概念</p><p>机器指令是处理器能够直接识别和执行的二进制编码，通常包含：</p><ul><li><strong><strong>操作码</strong></strong> ：规定传送、加法、比较、跳转等操作。</li><li><strong><strong>操作数信息</strong></strong> ：规定数据来源和结果去向。</li><li><strong><strong>寻址信息</strong></strong> ：规定如何计算存储器地址。</li><li><strong><strong>立即数或位移量</strong></strong> ：直接编码在指令中的常数。</li></ul><p>汇编指令用助记符、寄存器名、变量名和标号表示机器指令，使程序可供人阅读。例如：</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-asm data-lang=asm><span class=line><span class=cl><span class=nf>addl</span> <span class=nv>%ebx</span><span class=p>,</span> <span class=nv>%eax</span>
+</span></span></code></pre></div><p>其RTL语义为：</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-text data-lang=text><span class=line><span class=cl>R[eax] &lt;- R[eax] + R[ebx]
+</span></span></code></pre></div><p>汇编语言和机器语言高度对应，但不能把二者完全等同：标签、数据定义和对齐命令不一定对应可执行指令；伪指令也可能被展开为多条真实指令。</p></li></ul><ul><li><p>示例：两个整数相加</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-C data-lang=C><span class=line><span class=cl><span class=kt>int</span> <span class=nf>add</span><span class=p>(</span><span class=kt>int</span> <span class=n>a</span><span class=p>,</span> <span class=kt>int</span> <span class=n>b</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=k>return</span> <span class=n>a</span> <span class=o>+</span> <span class=n>b</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></div><p>一种IA-32实现：</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-asm data-lang=asm><span class=line><span class=cl><span class=nl>add:</span>
+</span></span><span class=line><span class=cl>    <span class=nf>movl</span> <span class=mi>4</span><span class=p>(</span><span class=nv>%esp</span><span class=p>),</span> <span class=nv>%eax</span>
+</span></span><span class=line><span class=cl>    <span class=nf>addl</span> <span class=mi>8</span><span class=p>(</span><span class=nv>%esp</span><span class=p>),</span> <span class=nv>%eax</span>
+</span></span><span class=line><span class=cl>    <span class=nf>ret</span>
+</span></span></code></pre></div><ul><li><code>4(%esp)</code> 处是第一个参数。</li><li><code>8(%esp)</code> 处是第二个参数。</li><li>返回值放在 <code>%eax</code> 中。</li><li><code>ret</code> 从栈中取得返回地址并返回调用者。</li></ul><div class=mermaid data-mermaid>flowchart LR
+A["C表达式 a+b"] --> B["汇编：mov/add"]
+B --> C["二进制机器指令"]
+C --> D["CPU取指、译码、执行"]</div></li></ul><ul><li><p>补充与易错点</p><ul><li>CPU直接执行的是机器代码，不是文本形式的汇编文件。</li><li>反汇编可以从机器代码得到汇编形式，但通常不能恢复变量名、类型、注释和原始控制结构。</li><li>汇编语言依赖ISA；x86、ARM和RISC-V的汇编不能直接互换。</li><li>同一机器指令可以有Intel格式和AT&amp;T格式两种文本表示。</li></ul></li></ul><h4 id=1-dot-2-指令集体系结构>1.2 指令集体系结构</h4><p>指令集体系结构ISA是软件与硬件之间的接口规范。编译器按照ISA生成机器代码，处理器则负责正确实现这些指令的语义。</p><div class=mermaid data-mermaid>flowchart TB
+A["应用程序"] --> B["编译器和操作系统"]
+B --> C["ISA：软硬件接口"]
+C --> D["处理器微体系结构"]
+D --> E["流水线、执行单元、Cache和物理寄存器"]</div><ul><li><p>ISA通常规定</p><ul><li>程序可使用的指令及其编码。</li><li>程序可见寄存器。</li><li>数据类型和操作数长度。</li><li>寻址方式和存储器访问规则。</li><li>条件码、异常和中断的体系结构机制。</li><li>指令执行后程序可观察到的结果。</li></ul></li></ul><ul><li><p>ISA通常不规定</p><ul><li>流水线级数。</li><li>Cache容量和替换策略。</li><li>是否乱序执行。</li><li>一条指令内部被拆成多少微操作。</li><li>处理器的具体电路结构。</li></ul><p>这些属于 <strong><strong>微体系结构</strong></strong> 。两款处理器可以实现相同的x86-64 ISA，却采用完全不同的流水线、缓存和分支预测结构，从而具有不同的性能和功耗。</p></li></ul><ul><li><p>示例</p><p>同一个x86-64可执行程序可运行在多个厂商、多个代次的兼容处理器上，原因不是它们内部结构相同，而是它们对外都遵守相同ISA和相应ABI。</p></li></ul><ul><li><p>补充</p><p>ISA还不是完整的二进制兼容规则。操作系统、编译器和库通常还遵守ABI，进一步规定参数传递、寄存器保存、数据布局和目标文件格式。</p></li></ul><h4 id=3-dot-1-dot-3-指令系统设计风格>3.1.3 指令系统设计风格</h4><p>指令系统常用CISC和RISC两种设计倾向进行说明。</p><table><thead><tr><th>对比点</th><th>CISC倾向</th><th>RISC倾向</th></tr></thead><tbody><tr><td>指令长度</td><td>可变、形式丰富</td><td>通常较规则</td></tr><tr><td>寻址方式</td><td>较丰富</td><td>较少且规则</td></tr><tr><td>存储器操作</td><td>多类指令可带存储器操作数</td><td>强调load/store访存</td></tr><tr><td>译码</td><td>较复杂</td><td>相对简单</td></tr><tr><td>代码密度</td><td>通常较高</td><td>与指令宽度和压缩扩展有关</td></tr><tr><td>代表</td><td>x86/IA-32</td><td>ARM、RISC-V、LoongArch</td></tr></tbody></table><ul><li><p>示例：实现 <code>c=a+b</code></p><p>装入-存储型指令系统可抽象为：</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-asm data-lang=asm><span class=line><span class=cl><span class=nf>load</span>  <span class=no>r1</span><span class=p>,</span> <span class=p>[</span><span class=no>a</span><span class=p>]</span>
+</span></span><span class=line><span class=cl><span class=nf>load</span>  <span class=no>r2</span><span class=p>,</span> <span class=p>[</span><span class=no>b</span><span class=p>]</span>
+</span></span><span class=line><span class=cl><span class=nf>add</span>   <span class=no>r3</span><span class=p>,</span> <span class=no>r1</span><span class=p>,</span> <span class=no>r2</span>
+</span></span><span class=line><span class=cl><span class=nf>store</span> <span class=p>[</span><span class=no>c</span><span class=p>],</span> <span class=no>r3</span>
+</span></span></code></pre></div><p>IA-32允许算术指令的一个操作数位于存储器中：</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-asm data-lang=asm><span class=line><span class=cl><span class=nf>movl</span> <span class=no>a</span><span class=p>,</span> <span class=nv>%eax</span>
+</span></span><span class=line><span class=cl><span class=nf>addl</span> <span class=no>b</span><span class=p>,</span> <span class=nv>%eax</span>
+</span></span><span class=line><span class=cl><span class=nf>movl</span> <span class=nv>%eax</span><span class=p>,</span> <span class=no>c</span>
+</span></span></code></pre></div><p>但IA-32的普通 <code>mov</code> 通常仍不允许存储器到存储器的直接复制，需用寄存器中转。</p></li></ul><ul><li><p>现代处理器中的融合</p><div class=mermaid data-mermaid>flowchart LR
+A["复杂x86指令"] --> B["前端译码"]
+B --> C["内部微操作"]
+C --> D["调度与乱序执行"]
+D --> E["执行单元"]</div><p>现代x86处理器对外保持CISC形式，对内常把复杂指令转换成较简单的微操作。因此“RISC一定比CISC快”并不成立；性能还取决于实现、缓存、编译器和工作负载。</p></li></ul><h4 id=3-dot-1-dot-4-生成机器代码的过程>3.1.4 生成机器代码的过程</h4><div class=mermaid data-mermaid>flowchart LR
+A["源程序 .c"] --> B["预处理"]
+B --> C["预处理结果 .i"]
+C --> D["编译"]
+D --> E["汇编程序 .s"]
+E --> F["汇编"]
+F --> G["可重定位目标文件 .o"]
+G --> H["链接"]
+H --> I["可执行文件"]</div><ul><li><p>预处理</p><p>处理 <code>#include</code> 、 <code>#define</code> 和条件编译。例如：</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-C data-lang=C><span class=line><span class=cl><span class=cp>#define DOUBLE(x) ((x) + (x))
+</span></span></span><span class=line><span class=cl><span class=kt>int</span> <span class=n>y</span> <span class=o>=</span> <span class=nf>DOUBLE</span><span class=p>(</span><span class=n>a</span><span class=p>);</span>
+</span></span></code></pre></div><p>会被展开为近似：</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-C data-lang=C><span class=line><span class=cl><span class=kt>int</span> <span class=n>y</span> <span class=o>=</span> <span class=p>((</span><span class=n>a</span><span class=p>)</span> <span class=o>+</span> <span class=p>(</span><span class=n>a</span><span class=p>));</span>
+</span></span></code></pre></div><p>宏是文本替换，参数若带副作用可能被求值多次。</p></li></ul><ul><li><p>编译</p><p>编译器完成词法和语法分析、类型检查、中间代码生成、优化和目标汇编生成。</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-C data-lang=C><span class=line><span class=cl><span class=kt>int</span> <span class=nf>square</span><span class=p>(</span><span class=kt>int</span> <span class=n>x</span><span class=p>)</span> <span class=p>{</span> <span class=k>return</span> <span class=n>x</span> <span class=o>*</span> <span class=n>x</span><span class=p>;</span> <span class=p>}</span>
+</span></span></code></pre></div><p>可能得到：</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>movl 4(%esp), %eax
+</span></span><span class=line><span class=cl>imull %eax, %eax
+</span></span><span class=line><span class=cl>ret
+</span></span></code></pre></div></li></ul><ul><li><p>汇编</p><p>汇编器把助记符转换为机器编码，建立符号表，为尚未确定的外部地址生成重定位信息，并输出目标文件。</p></li></ul><ul><li><p>优化的影响</p><p>优化后可能发生函数内联、常量折叠、无用代码删除、循环展开和寄存器分配。因此一条C语句没有固定的汇编指令数量。</p><p>观察代码可使用：</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl>gcc -m32 -O0 -S example.c -o example_O0.s
+</span></span><span class=line><span class=cl>gcc -m32 -O2 -S example.c -o example_O2.s
+</span></span><span class=line><span class=cl>objdump -d example.o
+</span></span></code></pre></div><hr></li></ul><h3 id=3-dot-2-ia-32指令系统概述>3.2 IA-32指令系统概述</h3><h4 id=3-dot-2-dot-1-数据类型及其格式>3.2.1 数据类型及其格式</h4><p>IA-32指令主要按操作数宽度处理位串。位串本身不携带“有符号、无符号、地址”等标签，具体含义由指令和程序类型决定。</p><table><thead><tr><th>名称</th><th>位数</th><th>字节数</th><th>AT&amp;T后缀</th></tr></thead><tbody><tr><td>Byte</td><td>8</td><td>1</td><td><code>b</code></td></tr><tr><td>Word</td><td>16</td><td>2</td><td><code>w</code></td></tr><tr><td>Double word</td><td>32</td><td>4</td><td><code>l</code></td></tr><tr><td>Quad word</td><td>64</td><td>8</td><td><code>q</code> ，主要见于x86-64</td></tr></tbody></table><ul><li><p>同一位串的不同解释</p><p>8位 <code>11111111</code> ：</p><ul><li>无符号解释为255。</li><li>补码有符号解释为-1。</li></ul><p>因此有符号比较和无符号比较必须使用不同条件跳转。</p></li></ul><ul><li><p>小端存储</p><p>若 <code>int x=0x12345678</code> 从地址 <code>0x1000</code> 开始存放：</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-text data-lang=text><span class=line><span class=cl>0x1000: 78
+</span></span><span class=line><span class=cl>0x1001: 56
+</span></span><span class=line><span class=cl>0x1002: 34
+</span></span><span class=line><span class=cl>0x1003: 12
+</span></span></code></pre></div><div class=mermaid data-mermaid>flowchart LR
+A["低地址 0x1000&lt;br/>78"] --> B["0x1001&lt;br/>56"]
+B --> C["0x1002&lt;br/>34"]
+C --> D["高地址 0x1003&lt;br/>12"]</div></li></ul><ul><li><p>扩展</p><p><code>0xFF</code> 从8位扩展到32位：</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-text data-lang=text><span class=line><span class=cl>零扩展：0x000000FF = 255
+</span></span><span class=line><span class=cl>符号扩展：0xFFFFFFFF = -1
+</span></span></code></pre></div><div class=highlight><pre tabindex=0 class=chroma><code class=language-asm data-lang=asm><span class=line><span class=cl><span class=nf>movzbl</span> <span class=nv>%al</span><span class=p>,</span> <span class=nv>%eax</span>
+</span></span><span class=line><span class=cl><span class=nf>movsbl</span> <span class=nv>%al</span><span class=p>,</span> <span class=nv>%eax</span>
+</span></span></code></pre></div><p>易错点： <code>word</code> 在IA-32术语中是16位；扩展有符号负数时若误用零扩展，数值会改变。</p></li></ul><h4 id=3-dot-2-dot-2-寄存器组织和寻址方式>3.2.2 寄存器组织和寻址方式</h4><ul><li><p>程序可见寄存器</p><table><thead><tr><th>寄存器</th><th>传统用途</th></tr></thead><tbody><tr><td><code>%eax</code></td><td>累加器、函数返回值</td></tr><tr><td><code>%ebx</code></td><td>基址、被调用者保存</td></tr><tr><td><code>%ecx</code></td><td>计数、移位次数</td></tr><tr><td><code>%edx</code></td><td>乘除法扩展部分、数据</td></tr><tr><td><code>%esi</code></td><td>源变址</td></tr><tr><td><code>%edi</code></td><td>目的变址</td></tr><tr><td><code>%ebp</code></td><td>栈帧基址</td></tr><tr><td><code>%esp</code></td><td>栈顶指针</td></tr></tbody></table><p>此外：</p><ul><li><code>EIP</code> 保存下一条指令地址。</li><li><code>EFLAGS</code> 保存条件码和控制标志。</li><li>段寄存器参与IA-32分段机制。</li></ul><div class=mermaid data-mermaid>flowchart TB
+EAX["EAX：32位"] --> AX["AX：低16位"]
+AX --> AH["AH：第8～15位"]
+AX --> AL["AL：低8位"]</div></li></ul><ul><li><p>有效地址</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-text data-lang=text><span class=line><span class=cl>有效地址 = 位移量 + 基址寄存器 + 变址寄存器 × 比例因子
+</span></span></code></pre></div><p>比例因子只能为1、2、4、8。AT&amp;T形式为：</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-asm data-lang=asm><span class=line><span class=cl><span class=nf>disp</span><span class=p>(</span><span class=no>base</span><span class=p>,</span> <span class=no>index</span><span class=p>,</span> <span class=no>scale</span><span class=p>)</span>
+</span></span></code></pre></div><p>例如：</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-asm data-lang=asm><span class=line><span class=cl><span class=nf>movl</span> <span class=mi>12</span><span class=p>(</span><span class=nv>%ebp</span><span class=p>,</span> <span class=nv>%ecx</span><span class=p>,</span> <span class=mi>4</span><span class=p>),</span> <span class=nv>%eax</span>
+</span></span></code></pre></div><p>读取地址 <code>EBP + ECX×4 + 12</code> 处的4字节。</p></li></ul><ul><li><p>常见寻址方式</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-asm data-lang=asm><span class=line><span class=cl><span class=nf>movl</span> <span class=no>$10</span><span class=p>,</span> <span class=nv>%eax</span>              <span class=c1>// 立即寻址
+</span></span></span><span class=line><span class=cl><span class=nf>movl</span> <span class=nv>%ebx</span><span class=p>,</span> <span class=nv>%eax</span>             <span class=c1>// 寄存器寻址
+</span></span></span><span class=line><span class=cl><span class=nf>movl</span> <span class=p>(</span><span class=nv>%eax</span><span class=p>),</span> <span class=nv>%edx</span>           <span class=c1>// 寄存器间接
+</span></span></span><span class=line><span class=cl><span class=nf>movl</span> <span class=mi>8</span><span class=p>(</span><span class=nv>%ebp</span><span class=p>),</span> <span class=nv>%eax</span>          <span class=c1>// 基址加位移
+</span></span></span><span class=line><span class=cl><span class=nf>movl</span> <span class=p>(</span><span class=nv>%eax</span><span class=p>,</span><span class=nv>%ecx</span><span class=p>,</span><span class=mi>4</span><span class=p>),</span> <span class=nv>%edx</span>    <span class=c1>// 基址+变址×比例
+</span></span></span></code></pre></div><p>若 <code>%eax</code> 保存 <code>int a[]</code> 的首地址、 <code>%ecx</code> 保存下标 <code>i</code> ，最后一条指令实现 <code>edx=a[i]</code> 。</p></li></ul><h4 id=3-dot-2-dot-3-机器指令格式>3.2.3 机器指令格式</h4><p>IA-32指令采用1～15字节的可变长度编码，通常由以下部分组成：</p><div class=mermaid data-mermaid>flowchart LR
+A["可选前缀"] --> B["操作码"]
+B --> C["可选 ModR/M"]
+C --> D["可选 SIB"]
+D --> E["可选位移量"]
+E --> F["可选立即数"]</div><ul><li><strong><strong>前缀</strong></strong> ：改变操作数长度、地址长度、重复方式或锁定语义。</li><li><strong><strong>操作码</strong></strong> ：规定基本操作。</li><li><strong><strong>ModR/M</strong></strong> ：组合 <code>mod</code> 、 <code>reg/opcode</code> 和 <code>r/m</code> 字段，编码寄存器及寻址方式。</li><li><strong><strong>SIB</strong></strong> ：组合 <code>scale</code> 、 <code>index</code> 和 <code>base</code> 。</li><li><strong><strong>位移量</strong></strong> ：地址计算中的常量偏移。</li><li><strong><strong>立即数</strong></strong> ：作为数据直接编码在指令内。</li></ul><ul><li><p>编码示例</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-C data-lang=C><span class=line><span class=cl><span class=n>movl</span> <span class=mi>8</span><span class=p>(</span><span class=o>%</span><span class=n>ebp</span><span class=p>),</span> <span class=o>%</span><span class=n>eax</span>
+</span></span></code></pre></div><p>一种编码为：</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-text data-lang=text><span class=line><span class=cl>8B 45 08
+</span></span></code></pre></div><ul><li><code>8B</code> ：把32位寄存器或存储器操作数送入寄存器。</li><li><code>45</code> ：选择EAX和 <code>EBP+8位位移</code> 的寻址组合。</li><li><code>08</code> ：位移量8。</li></ul><p>Intel格式 <code>mov eax,[ebp+8]</code> 与AT&amp;T格式 <code>movl 8(%ebp),%eax</code> 可生成同一机器指令；文本语法不等于机器编码格式。</p><hr></li></ul><h3 id=3-dot-3-ia-32常用指令类型及其操作>3.3 IA-32常用指令类型及其操作</h3><h4 id=3-dot-3-dot-1-传送指令>3.3.1 传送指令</h4><ul><li><p>MOV</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-asm data-lang=asm><span class=line><span class=cl><span class=nf>movl</span> <span class=no>source</span><span class=p>,</span> <span class=no>destination</span>
+</span></span></code></pre></div><p>执行 <code>destination &lt;- source</code> 。普通 <code>mov</code> 不允许两个操作数同时来自存储器：</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-asm data-lang=asm><span class=line><span class=cl><span class=nf>movl</span> <span class=p>(</span><span class=nv>%eax</span><span class=p>),</span> <span class=nv>%ecx</span>
+</span></span><span class=line><span class=cl><span class=nf>movl</span> <span class=nv>%ecx</span><span class=p>,</span> <span class=p>(</span><span class=nv>%ebx</span><span class=p>)</span>
+</span></span></code></pre></div><p>错误示意：movl (%eax), (%ebx)</p></li></ul><ul><li><p>LEA</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-asm data-lang=asm><span class=line><span class=cl><span class=nf>leal</span> <span class=mi>8</span><span class=p>(</span><span class=nv>%eax</span><span class=p>,</span><span class=nv>%ecx</span><span class=p>,</span><span class=mi>4</span><span class=p>),</span> <span class=nv>%edx</span>
+</span></span></code></pre></div><p>只计算 <code>EAX+ECX×4+8</code> ，不读取该地址中的内存。编译器也会用 <code>lea</code> 执行普通整数运算：</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-asm data-lang=asm><span class=line><span class=cl><span class=nf>leal</span> <span class=mi>3</span><span class=p>(</span><span class=nv>%eax</span><span class=p>,</span><span class=nv>%eax</span><span class=p>,</span><span class=mi>4</span><span class=p>),</span> <span class=nv>%edx</span>
+</span></span></code></pre></div><p>edx = 5*eax+3</p></li></ul><ul><li><p>栈传送</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-asm data-lang=asm><span class=line><span class=cl><span class=nf>pushl</span> <span class=nv>%eax</span>
+</span></span><span class=line><span class=cl><span class=nf>popl</span> <span class=nv>%ebx</span>
+</span></span></code></pre></div><div class=highlight><pre tabindex=0 class=chroma><code class=language-text data-lang=text><span class=line><span class=cl>pushl: ESP &lt;- ESP-4; M[ESP] &lt;- EAX
+</span></span><span class=line><span class=cl>popl:  EBX &lt;- M[ESP]; ESP &lt;- ESP+4
+</span></span></code></pre></div><div class=mermaid data-mermaid>flowchart LR
+A["push前"] --> B["ESP减4"]
+B --> C["写入新栈顶"]
+C --> D["pop读取栈顶"]
+D --> E["ESP加4"]</div><p>因为在x86架构中，栈是“向下生长”的（从高地址向低地址扩展）,所以ESP栈顶指针在扩展栈空间时进行“减”运算</p><p>注意： <code>lea</code> 与 <code>mov</code> 的根本差别是前者不访存； <code>push/pop</code> 会隐式修改ESP。</p></li></ul><h4 id=3-dot-3-dot-2-定点算术运算指令>3.3.2 定点算术运算指令</h4><div class=highlight><pre tabindex=0 class=chroma><code class=language-asm data-lang=asm><span class=line><span class=cl><span class=nf>addl</span> <span class=nv>%ebx</span><span class=p>,</span> <span class=nv>%eax</span>
+</span></span><span class=line><span class=cl><span class=nf>subl</span> <span class=nv>%ebx</span><span class=p>,</span> <span class=nv>%eax</span>
+</span></span><span class=line><span class=cl><span class=nf>incl</span> <span class=nv>%eax</span>
+</span></span><span class=line><span class=cl><span class=nf>decl</span> <span class=nv>%eax</span>
+</span></span><span class=line><span class=cl><span class=nf>negl</span> <span class=nv>%eax</span>
+</span></span><span class=line><span class=cl><span class=nf>cmpl</span> <span class=nv>%ebx</span><span class=p>,</span> <span class=nv>%eax</span>
+</span></span></code></pre></div><p><code>cmp</code> 执行类似 <code>EAX-EBX</code> 的运算，只更新标志而不保存差值。</p><table><thead><tr><th>标志</th><th>含义</th></tr></thead><tbody><tr><td>CF</td><td>无符号进位或借位</td></tr><tr><td>ZF</td><td>结果为0</td></tr><tr><td>SF</td><td>结果符号位</td></tr><tr><td>OF</td><td>有符号运算溢出</td></tr></tbody></table><p>例如8位 <code>127+1</code> 得到位串 <code>10000000</code> ：按有符号数发生溢出，OF=1；它没有产生第9位进位，CF=0。CF和OF不能混用。</p><ul><li><p>乘法</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-asm data-lang=asm><span class=line><span class=cl><span class=nf>mull</span> <span class=no>operand</span>       <span class=c1>// EDX:EAX &lt;- EAX * operand，无符号
+</span></span></span><span class=line><span class=cl><span class=nf>imull</span> <span class=no>operand</span>      <span class=c1>// 有符号扩展宽度乘法
+</span></span></span><span class=line><span class=cl><span class=nf>imull</span> <span class=nv>%ebx</span><span class=p>,</span> <span class=nv>%eax</span>   <span class=c1>// EAX &lt;- EAX * EBX
+</span></span></span></code></pre></div></li></ul><ul><li><p>除法</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-asm data-lang=asm><span class=line><span class=cl><span class=nf>divl</span> <span class=nv>%ecx</span>          <span class=c1>// EDX:EAX无符号除以ECX
+</span></span></span><span class=line><span class=cl><span class=nf>cltd</span>
+</span></span><span class=line><span class=cl><span class=nf>idivl</span> <span class=nv>%ecx</span>         <span class=c1>// EDX:EAX有符号除以ECX
+</span></span></span></code></pre></div><p>商写入EAX，余数写入EDX。无符号除法前通常把EDX清零；有符号除法前通常用 <code>cltd</code> 把EAX符号扩展到EDX:EAX。除数为0或商超出范围会触发异常。</p></li></ul><h4 id=3-dot-3-dot-3-按位运算指令>3.3.3 按位运算指令</h4><div class=highlight><pre tabindex=0 class=chroma><code class=language-asm data-lang=asm><span class=line><span class=cl><span class=nf>andl</span> <span class=nv>%ebx</span><span class=p>,</span> <span class=nv>%eax</span>
+</span></span><span class=line><span class=cl><span class=nf>orl</span>  <span class=nv>%ebx</span><span class=p>,</span> <span class=nv>%eax</span>
+</span></span><span class=line><span class=cl><span class=nf>xorl</span> <span class=nv>%ebx</span><span class=p>,</span> <span class=nv>%eax</span>
+</span></span><span class=line><span class=cl><span class=nf>notl</span> <span class=nv>%eax</span>
+</span></span><span class=line><span class=cl><span class=nf>testl</span> <span class=nv>%eax</span><span class=p>,</span> <span class=nv>%eax</span>
+</span></span></code></pre></div><p>掩码应用：</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-asm data-lang=asm><span class=line><span class=cl><span class=nf>andl</span> <span class=no>$0xFF</span><span class=p>,</span> <span class=nv>%eax</span>          <span class=c1>// 保留最低8位
+</span></span></span><span class=line><span class=cl><span class=nf>orl</span>  <span class=no>$0x08</span><span class=p>,</span> <span class=nv>%eax</span>          <span class=c1>// 把第3位置1
+</span></span></span><span class=line><span class=cl><span class=nf>andl</span> <span class=no>$0xFFFFFFF7</span><span class=p>,</span> <span class=nv>%eax</span>    <span class=c1>// 把第3位清0
+</span></span></span><span class=line><span class=cl><span class=nf>xorl</span> <span class=no>$0x08</span><span class=p>,</span> <span class=nv>%eax</span>          <span class=c1>// 翻转第3位
+</span></span></span></code></pre></div><p><code>test</code> 执行按位与并设置条件码，但不保存结果，常用于判断寄存器是否为0。</p><ul><li><p>移位</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-asm data-lang=asm><span class=line><span class=cl><span class=nf>shll</span> <span class=no>$1</span><span class=p>,</span> <span class=nv>%eax</span>    <span class=c1>// 左移
+</span></span></span><span class=line><span class=cl><span class=nf>shrl</span> <span class=no>$1</span><span class=p>,</span> <span class=nv>%eax</span>    <span class=c1>// 逻辑右移，高位补0
+</span></span></span><span class=line><span class=cl><span class=nf>sarl</span> <span class=no>$1</span><span class=p>,</span> <span class=nv>%eax</span>    <span class=c1>// 算术右移，高位补符号位
+</span></span></span></code></pre></div><p>对非负整数，左移 <code>k</code> 位通常相当于乘 <code>$2^k$</code> ；右移与除法在负数舍入、溢出和语言规则上可能有差异。位运算宜优先使用无符号类型。</p></li></ul><h4 id=3-dot-3-dot-4-程序执行流控制指令>3.3.4 程序执行流控制指令</h4><p>无条件跳转：</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-asm data-lang=asm><span class=line><span class=cl><span class=nf>jmp</span> <span class=no>target</span>
+</span></span></code></pre></div><p>常用条件跳转：
+条件跳转指令Jcc。（其 中 cc 为 条 件 助 记 符 ） 以标志位或标志位组合作为跳转依据。如果满足条件，则跳转到由标号匕卜可确定的目标地址处执行；否则继续执行下一条指令。这类指令都采用 <strong><strong>相对寻址方式</strong></strong> 的直接跳转</p><table><thead><tr><th>条件</th><th>指令</th><th>条件码</th></tr></thead><tbody><tr><td>相等</td><td><code>je</code></td><td>ZF=1</td></tr><tr><td>不等</td><td><code>jne</code></td><td>ZF=0</td></tr><tr><td>无符号小于</td><td><code>jb</code></td><td>CF=1</td></tr><tr><td>无符号大于</td><td><code>ja</code></td><td>CF=0且ZF=0</td></tr><tr><td>有符号小于</td><td><code>jl</code></td><td>SF不等于OF</td></tr><tr><td>有符号大于</td><td><code>jg</code></td><td>ZF=0且SF=OF</td></tr></tbody></table><table><thead><tr><th>指令</th><th>跳转条件</th><th>说明</th></tr></thead><tbody><tr><td>jc label</td><td>CF=1</td><td>有进位 / 借位</td></tr><tr><td>jnc label</td><td>CF=0</td><td>无进位 / 借位</td></tr><tr><td>je/jz label</td><td>ZF=1</td><td>相等 / 等于零</td></tr><tr><td>jne/jnz label</td><td>ZF=0</td><td>不相等 / 不等于零</td></tr><tr><td>js label</td><td>SF=1</td><td>是负数</td></tr><tr><td>jns label</td><td>SF=0</td><td>是非负数</td></tr><tr><td>jo label</td><td>OF=1</td><td>有溢出</td></tr><tr><td>jno label</td><td>OF=0</td><td>无溢出</td></tr><tr><td>ja/jnbe label</td><td>CF=0 AND ZF=0</td><td>无符号整数 A＞B</td></tr><tr><td>jae/jnb label</td><td>CF=0 OR ZF=1</td><td>无符号整数 A≥B</td></tr><tr><td>jb/jnae label</td><td>CF=1 AND ZF=0</td><td>无符号整数 A＜B</td></tr><tr><td>jbe/jna label</td><td>CF=1 OR ZF=1</td><td>无符号整数 A≤B</td></tr><tr><td>jg/jnle label</td><td>SF=OF AND ZF=0</td><td>带符号整数 A＞B</td></tr><tr><td>jge/jnl label</td><td>SF=OF OR ZF=1</td><td>带符号整数 A≥B</td></tr><tr><td>jl/jnge label</td><td>SF≠OF AND ZF=0</td><td>带符号整数 A＜B</td></tr><tr><td>jle/jng label</td><td>SF≠OF OR ZF=1</td><td>带符号整数 A≤B</td></tr></tbody></table><ul><li><p>示例</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-C data-lang=C><span class=line><span class=cl><span class=k>if</span> <span class=p>(</span><span class=n>a</span> <span class=o>&lt;</span> <span class=n>b</span><span class=p>)</span> <span class=n>x</span><span class=o>=</span><span class=mi>1</span><span class=p>;</span> <span class=k>else</span> <span class=n>x</span><span class=o>=</span><span class=mi>0</span><span class=p>;</span>
+</span></span></code></pre></div><div class=highlight><pre tabindex=0 class=chroma><code class=language-asm data-lang=asm><span class=line><span class=cl><span class=nf>movl</span> <span class=no>a</span><span class=p>,</span> <span class=nv>%eax</span>
+</span></span><span class=line><span class=cl><span class=nf>cmpl</span> <span class=no>b</span><span class=p>,</span> <span class=nv>%eax</span>
+</span></span><span class=line><span class=cl><span class=nf>jl</span> <span class=no>.Lless</span>
+</span></span><span class=line><span class=cl><span class=nf>movl</span> <span class=no>$0</span><span class=p>,</span> <span class=no>x</span>
+</span></span><span class=line><span class=cl><span class=nf>jmp</span> <span class=no>.Lend</span>
+</span></span><span class=line><span class=cl><span class=nl>.Lless:</span>
+</span></span><span class=line><span class=cl><span class=nf>movl</span> <span class=no>$1</span><span class=p>,</span> <span class=no>x</span>
+</span></span><span class=line><span class=cl><span class=nl>.Lend:</span>
+</span></span></code></pre></div><div class=mermaid data-mermaid>flowchart TD
+A["比较a与b"] --> B{"a&lt;b?"}
+B -- 是 --> C["x=1"]
+B -- 否 --> D["x=0"]
+C --> E["继续"]
+D --> E</div><p><code>call</code> 把返回地址压栈后跳到被调用过程； <code>ret</code> 从栈顶取出返回地址。条件跳转依赖之前设置的标志，比较与跳转之间不能随意插入修改标志的指令。</p><hr></li></ul><h3 id=3-dot-4-c语言程序的机器级表示>3.4 C语言程序的机器级表示</h3><h4 id=3-dot-4-dot-1-过程调用的机器级表示>3.4.1 过程调用的机器级表示</h4><p>过程调用必须协调参数、返回地址、返回值、寄存器和局部变量。以下采用典型IA-32 cdecl/System V风格：</p><ul><li>参数通常从右向左压栈。</li><li>返回值通常在EAX中。</li><li>调用者清理参数。</li><li>EAX、ECX、EDX通常由调用者保存。</li><li>EBX、ESI、EDI、EBP通常由被调用者恢复。</li></ul><ul><li><p>经典栈帧</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-asm data-lang=asm><span class=line><span class=cl><span class=nf>pushl</span> <span class=nv>%ebp</span>
+</span></span><span class=line><span class=cl><span class=nf>movl</span>  <span class=nv>%esp</span><span class=p>,</span> <span class=nv>%ebp</span>
+</span></span><span class=line><span class=cl><span class=nf>subl</span>  <span class=no>$16</span><span class=p>,</span> <span class=nv>%esp</span>
+</span></span></code></pre></div><p>结束时：</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-asm data-lang=asm><span class=line><span class=cl><span class=nf>leave</span>
+</span></span><span class=line><span class=cl><span class=nf>ret</span>
+</span></span></code></pre></div><p><code>leave</code> 近似等于 <code>movl %ebp,%esp; popl %ebp</code> 。</p><div class=mermaid data-mermaid>flowchart TB
+A["高地址"] --> B["后续参数"]
+B --> C["第一个参数"]
+C --> D["返回地址：4(%ebp)"]
+D --> E["旧EBP：0(%ebp)"]
+E --> F["局部变量：负偏移"]
+F --> G["低地址 / 当前ESP"]</div></li></ul><ul><li><p>示例</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-c data-lang=c><span class=line><span class=cl><span class=kt>int</span> <span class=nf>add</span><span class=p>(</span><span class=kt>int</span> <span class=n>a</span><span class=p>,</span><span class=kt>int</span> <span class=n>b</span><span class=p>)</span> <span class=p>{</span> <span class=k>return</span> <span class=n>a</span><span class=o>+</span><span class=n>b</span><span class=p>;</span> <span class=p>}</span>
+</span></span></code></pre></div><p>调用者：</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-asm data-lang=asm><span class=line><span class=cl><span class=nf>pushl</span> <span class=no>$3</span>
+</span></span><span class=line><span class=cl><span class=nf>pushl</span> <span class=no>$2</span>
+</span></span><span class=line><span class=cl><span class=nf>call</span> <span class=no>add</span>
+</span></span><span class=line><span class=cl><span class=nf>addl</span> <span class=no>$8</span><span class=p>,</span> <span class=nv>%esp</span>
+</span></span></code></pre></div><p>被调用者：</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-asm data-lang=asm><span class=line><span class=cl><span class=nl>add:</span>
+</span></span><span class=line><span class=cl>    <span class=nf>pushl</span> <span class=nv>%ebp</span>
+</span></span><span class=line><span class=cl>    <span class=nf>movl</span> <span class=nv>%esp</span><span class=p>,</span> <span class=nv>%ebp</span>
+</span></span><span class=line><span class=cl>    <span class=nf>movl</span> <span class=mi>8</span><span class=p>(</span><span class=nv>%ebp</span><span class=p>),</span> <span class=nv>%eax</span>
+</span></span><span class=line><span class=cl>    <span class=nf>addl</span> <span class=mi>12</span><span class=p>(</span><span class=nv>%ebp</span><span class=p>),</span> <span class=nv>%eax</span>
+</span></span><span class=line><span class=cl>    <span class=nf>leave</span>
+</span></span><span class=line><span class=cl>    <span class=nf>ret</span>
+</span></span></code></pre></div><p>优化器可能省略EBP栈帧、把局部变量保存在寄存器、内联函数或进行尾调用优化。经典栈帧是理解模型，不是所有函数的固定模板。</p></li></ul><h4 id=3-dot-4-dot-2-选择语句的机器级表示>3.4.2 选择语句的机器级表示</h4><ul><li><p>if-else</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-c data-lang=c><span class=line><span class=cl><span class=k>if</span> <span class=p>(</span><span class=n>x</span><span class=o>&gt;</span><span class=mi>0</span><span class=p>)</span> <span class=n>y</span><span class=o>=</span><span class=n>x</span><span class=p>;</span> <span class=k>else</span> <span class=n>y</span><span class=o>=-</span><span class=n>x</span><span class=p>;</span>
+</span></span></code></pre></div><div class=highlight><pre tabindex=0 class=chroma><code class=language-asm data-lang=asm><span class=line><span class=cl><span class=nf>movl</span> <span class=no>x</span><span class=p>,</span> <span class=nv>%eax</span>
+</span></span><span class=line><span class=cl><span class=nf>cmpl</span> <span class=no>$0</span><span class=p>,</span> <span class=nv>%eax</span>
+</span></span><span class=line><span class=cl><span class=nf>jle</span> <span class=no>.Lelse</span>
+</span></span><span class=line><span class=cl><span class=nf>movl</span> <span class=nv>%eax</span><span class=p>,</span> <span class=no>y</span>
+</span></span><span class=line><span class=cl><span class=nf>jmp</span> <span class=no>.Lend</span>
+</span></span><span class=line><span class=cl><span class=nl>.Lelse:</span>
+</span></span><span class=line><span class=cl><span class=nf>negl</span> <span class=nv>%eax</span>
+</span></span><span class=line><span class=cl><span class=nf>movl</span> <span class=nv>%eax</span><span class=p>,</span> <span class=no>y</span>
+</span></span><span class=line><span class=cl><span class=nl>.Lend:</span>
+</span></span></code></pre></div></li></ul><ul><li><p>逻辑短路</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-c data-lang=c><span class=line><span class=cl><span class=k>if</span> <span class=p>(</span><span class=n>p</span> <span class=o>!=</span> <span class=nb>NULL</span> <span class=o>&amp;&amp;</span> <span class=n>p</span><span class=o>-&gt;</span><span class=n>value</span> <span class=o>&gt;</span> <span class=mi>0</span><span class=p>)</span>
+</span></span></code></pre></div><p>必须先判断 <code>p</code> 非空，才可读取 <code>p->value</code> 。</p><div class=mermaid data-mermaid>flowchart TD
+A{"p非空?"} -- 否 --> D["条件为假"]
+A -- 是 --> B{"p->value>0?"}
+B -- 否 --> D
+B -- 是 --> C["条件为真"]</div></li></ul><ul><li><p>switch</p><p>分支少或case稀疏时，可生成连续比较；case密集时，可使用跳转表：</p><div class=mermaid data-mermaid>flowchart TD
+A["index=x-min"] --> B{"index越界?"}
+B -- 是 --> C["default"]
+B -- 否 --> D["读取jump_table[index]"]
+D --> E["间接跳转到case"]</div><p>简单、无副作用的条件表达式还可能使用 <code>cmov</code> 条件传送，减少不可预测分支，但两个候选值通常都需要可安全计算。</p></li></ul><h4 id=3-dot-4-dot-3-循环结构的机器级表示>3.4.3 循环结构的机器级表示</h4><p><code>while</code> 、 <code>do-while</code> 和 <code>for</code> 最终都由比较、条件跳转和回跳构成。</p><div class=mermaid data-mermaid>flowchart TD
+A["初始化"] --> B{"循环条件?"}
+B -- 否 --> E["退出"]
+B -- 是 --> C["循环体"]
+C --> D["更新变量"]
+D --> B</div><ul><li><p>数组求和</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-c data-lang=c><span class=line><span class=cl><span class=kt>int</span> <span class=nf>sum_array</span><span class=p>(</span><span class=kt>int</span> <span class=o>*</span><span class=n>a</span><span class=p>,</span><span class=kt>int</span> <span class=n>n</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=kt>int</span> <span class=n>sum</span><span class=o>=</span><span class=mi>0</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=k>for</span> <span class=p>(</span><span class=kt>int</span> <span class=n>i</span><span class=o>=</span><span class=mi>0</span><span class=p>;</span><span class=n>i</span><span class=o>&lt;</span><span class=n>n</span><span class=p>;</span><span class=n>i</span><span class=o>++</span><span class=p>)</span> <span class=n>sum</span><span class=o>+=</span><span class=n>a</span><span class=p>[</span><span class=n>i</span><span class=p>];</span>
+</span></span><span class=line><span class=cl>    <span class=k>return</span> <span class=n>sum</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></div><p>抽象汇编：</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-asm data-lang=asm><span class=line><span class=cl><span class=nf>xorl</span> <span class=nv>%eax</span><span class=p>,</span> <span class=nv>%eax</span>              <span class=c1>// sum=0
+</span></span></span><span class=line><span class=cl><span class=nf>xorl</span> <span class=nv>%ecx</span><span class=p>,</span> <span class=nv>%ecx</span>              <span class=c1>// i=0
+</span></span></span><span class=line><span class=cl><span class=nl>.Lloop:</span>
+</span></span><span class=line><span class=cl>    <span class=nf>cmpl</span> <span class=no>n</span><span class=p>,</span> <span class=nv>%ecx</span>
+</span></span><span class=line><span class=cl>    <span class=nf>jge</span> <span class=no>.Ldone</span>
+</span></span><span class=line><span class=cl>    <span class=nf>addl</span> <span class=p>(</span><span class=nv>%edx</span><span class=p>,</span><span class=nv>%ecx</span><span class=p>,</span><span class=mi>4</span><span class=p>),</span> <span class=nv>%eax</span>
+</span></span><span class=line><span class=cl>    <span class=nf>incl</span> <span class=nv>%ecx</span>
+</span></span><span class=line><span class=cl>    <span class=nf>jmp</span> <span class=no>.Lloop</span>
+</span></span><span class=line><span class=cl><span class=nl>.Ldone:</span>
+</span></span><span class=line><span class=cl>    <span class=nf>ret</span>
+</span></span></code></pre></div><ul><li><code>while</code> 先判断，可能一次都不执行。</li><li><code>do-while</code> 先执行，至少一次。</li><li><code>for</code> 可理解为初始化、条件、循环体、更新四部分。</li><li><code>break</code> 跳向循环出口； <code>continue</code> 跳向更新或下一次判断位置。</li></ul><p>编译器还可能进行循环不变量外提、强度削弱、展开、向量化和指针递增优化。</p><hr></li></ul><h3 id=3-dot-5-复杂数据类型的分配和访问>3.5 复杂数据类型的分配和访问</h3><h4 id=3-dot-5-dot-1-数组的分配和访问>3.5.1 数组的分配和访问</h4><p>一维数组元素地址：</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-text data-lang=text><span class=line><span class=cl>&amp;A[i] = base(A) + i * sizeof(A[0])
+</span></span></code></pre></div><p>例如 <code>int a[10]</code> 首地址为 <code>0x1000</code> ，则：</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-text data-lang=text><span class=line><span class=cl>&amp;a[3] = 0x1000 + 3*4 = 0x100C
+</span></span></code></pre></div><div class=highlight><pre tabindex=0 class=chroma><code class=language-asm data-lang=asm><span class=line><span class=cl><span class=nf>movl</span> <span class=p>(</span><span class=nv>%eax</span><span class=p>,</span><span class=nv>%ecx</span><span class=p>,</span><span class=mi>4</span><span class=p>),</span> <span class=nv>%edx</span>
+</span></span></code></pre></div><p>可用于读取 <code>a[i]</code> 。</p><ul><li><p>二维数组</p><p>C语言按行优先存放 <code>int a[R][C]</code> ：</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-text data-lang=text><span class=line><span class=cl>&amp;a[i][j] = base(a) + (i*C+j)*sizeof(int)
+</span></span></code></pre></div><div class=mermaid data-mermaid>flowchart LR
+A["a[0][0]"] --> B["a[0][1]"]
+B --> C["..."]
+C --> D["a[0][C-1]"]
+D --> E["a[1][0]"]</div><p><code>a[i]</code> 等价于 <code>*(a+i)</code> ，指针加法会自动按元素宽度缩放。普通C数组访问没有自动边界检查；越界会产生未定义行为，并可能破坏其他数据。</p><p>按行连续遍历二维数组通常具有较好的空间局部性。</p></li></ul><h4 id=3-dot-5-dot-2-结构体数据的分配和访问>3.5.2 结构体数据的分配和访问</h4><div class=highlight><pre tabindex=0 class=chroma><code class=language-c data-lang=c><span class=line><span class=cl><span class=k>struct</span> <span class=n>S</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=kt>char</span> <span class=n>c</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=kt>int</span> <span class=n>i</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=kt>short</span> <span class=n>s</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=p>};</span>
+</span></span></code></pre></div><p>典型4字节对齐布局：</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-text data-lang=text><span class=line><span class=cl>偏移0：c，1字节
+</span></span><span class=line><span class=cl>偏移1～3：填充
+</span></span><span class=line><span class=cl>偏移4～7：i
+</span></span><span class=line><span class=cl>偏移8～9：s
+</span></span><span class=line><span class=cl>偏移10～11：尾部填充
+</span></span><span class=line><span class=cl>总大小：12字节
+</span></span></code></pre></div><div class=mermaid data-mermaid>flowchart LR
+A["c 1B"] --> B["填充 3B"]
+B --> C["i 4B"]
+C --> D["s 2B"]
+D --> E["尾部填充 2B"]</div><p>若结构体首地址在EAX， <code>i</code> 的偏移为4：</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-asm data-lang=asm><span class=line><span class=cl><span class=nf>movl</span> <span class=no>$10</span><span class=p>,</span> <span class=mi>4</span><span class=p>(</span><span class=nv>%eax</span><span class=p>)</span>
+</span></span></code></pre></div><p>结构体赋值语义上复制整个对象，编译器可能使用多条传送、块复制指令或库函数。结构体按值传参和返回的具体实现由ABI决定。</p><p>成员顺序会影响填充。例如 <code>char,int,char</code> 典型大小为12字节，而 <code>int,char,char</code> 可能只需8字节；但涉及外部二进制接口时不能随意调整成员顺序。</p><h4 id=3-dot-5-dot-3-联合体数据的分配和访问>3.5.3 联合体数据的分配和访问</h4><div class=highlight><pre tabindex=0 class=chroma><code class=language-c data-lang=c><span class=line><span class=cl><span class=k>union</span> <span class=n>U</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=kt>int</span> <span class=n>i</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=kt>double</span> <span class=n>d</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=kt>char</span> <span class=n>bytes</span><span class=p>[</span><span class=mi>8</span><span class=p>];</span>
+</span></span><span class=line><span class=cl><span class=p>};</span>
+</span></span></code></pre></div><p>所有成员共享同一段存储空间。联合体大小至少容纳最大成员，并满足最严格成员的对齐要求。</p><div class=mermaid data-mermaid>flowchart TB
+A["同一段存储空间"] --> B["按int解释"]
+A --> C["按double解释"]
+A --> D["按char[8]解释"]</div><p>若写入 <code>u.i=0x12345678</code> ，在小端机器观察字节可能得到 <code>78 56 34 12</code> 。但跨平台程序不能轻率依赖字节序、类型大小、浮点格式或未初始化剩余字节。</p><p>联合体不会自动记录当前有效成员，常配合标签使用：</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-c data-lang=c><span class=line><span class=cl><span class=k>struct</span> <span class=n>Value</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=k>enum</span> <span class=n>Kind</span> <span class=p>{</span> <span class=n>INT_VALUE</span><span class=p>,</span> <span class=n>DOUBLE_VALUE</span> <span class=p>}</span> <span class=n>kind</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=k>union</span> <span class=p>{</span> <span class=kt>int</span> <span class=n>i</span><span class=p>;</span> <span class=kt>double</span> <span class=n>d</span><span class=p>;</span> <span class=p>}</span> <span class=n>data</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=p>};</span>
+</span></span></code></pre></div><p>访问前根据 <code>kind</code> 选择正确成员。</p><h4 id=3-dot-5-dot-4-数据的对齐方式>3.5.4 数据的对齐方式</h4><p>若对象要求 <code>a</code> 字节对齐，则其地址满足：</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-text data-lang=text><span class=line><span class=cl>address mod a = 0
+</span></span></code></pre></div><p>典型自然对齐：</p><table><thead><tr><th>类型</th><th>大小</th><th>常见对齐</th></tr></thead><tbody><tr><td><code>char</code></td><td>1</td><td>1</td></tr><tr><td><code>short</code></td><td>2</td><td>2</td></tr><tr><td><code>int</code></td><td>4</td><td>4</td></tr><tr><td>IA-32指针</td><td>4</td><td>4</td></tr><tr><td>x86-64指针</td><td>8</td><td>8</td></tr></tbody></table><p>结构体有两类填充：</p><ul><li>成员间填充，使下一个成员正确对齐。</li><li>尾部填充，使结构体数组中的下一个对象仍对齐。</li></ul><p>把地址 <code>x</code> 向上调整到2的幂 <code>a</code> 的倍数：</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-text data-lang=text><span class=line><span class=cl>aligned = (x+a-1) &amp; ~(a-1)
+</span></span></code></pre></div><p>例如13按8字节向上对齐得到16。</p><p>编译器的 <code>packed</code> 扩展可以减少填充，但可能产生未对齐访问、性能下降或ABI不兼容。外部文件和网络协议更适合逐字段序列化，而不是直接写出本机结构体内存。</p><hr><h3 id=3-dot-6-兼容ia-32的64位系统>3.6 兼容IA-32的64位系统</h3><h4 id=3-dot-6-dot-1-x86-64的基本特点>3.6.1 x86-64的基本特点</h4><p>x86-64在兼容x86的基础上扩展了寄存器和地址能力。</p><ul><li>EAX、EBX等扩展为RAX、RBX等64位寄存器。</li><li>新增R8～R15，共16个64位通用寄存器。</li><li>RIP和RSP分别对应64位指令指针和栈指针。</li><li>支持RIP相对寻址，便于生成位置无关代码。</li><li>现代ABI主要使用SSE/AVX寄存器处理浮点参数和运算。</li></ul><div class=mermaid data-mermaid>flowchart TB
+A["RAX 64位"] --> B["EAX 低32位"]
+B --> C["AX 低16位"]
+C --> D["AH 第8～15位"]
+C --> E["AL 低8位"]</div><p>在x86-64模式下，写32位寄存器会自动清零对应64位寄存器的高32位：</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-asm data-lang=asm><span class=line><span class=cl><span class=nf>movl</span> <span class=no>$1</span><span class=p>,</span> <span class=nv>%eax</span>     <span class=c1>// RAX变为0x0000000000000001
+</span></span></span></code></pre></div><p>写8位或16位子寄存器通常不会自动清除其余高位。</p><p>64位寄存器可保存64位地址，但具体处理器和操作系统不一定实现完整的 <code>2^64</code> 字节虚拟或物理地址空间。</p><h4 id=3-dot-6-dot-2-x86-64的过程调用>3.6.2 x86-64的过程调用</h4><p>以下采用教材所述类Unix System V AMD64约定。前6个整数或指针参数通常依次放入：</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-text data-lang=text><span class=line><span class=cl>RDI, RSI, RDX, RCX, R8, R9
+</span></span></code></pre></div><p>更多参数放在栈中，整数返回值通常放在RAX，浮点参数和返回值通常使用XMM寄存器。</p><ul><li><p>示例</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-c data-lang=c><span class=line><span class=cl><span class=kt>long</span> <span class=nf>add3</span><span class=p>(</span><span class=kt>long</span> <span class=n>a</span><span class=p>,</span><span class=kt>long</span> <span class=n>b</span><span class=p>,</span><span class=kt>long</span> <span class=n>c</span><span class=p>)</span> <span class=p>{</span> <span class=k>return</span> <span class=n>a</span><span class=o>+</span><span class=n>b</span><span class=o>+</span><span class=n>c</span><span class=p>;</span> <span class=p>}</span>
+</span></span></code></pre></div><div class=highlight><pre tabindex=0 class=chroma><code class=language-asm data-lang=asm><span class=line><span class=cl><span class=nl>add3:</span>
+</span></span><span class=line><span class=cl>    <span class=nf>leaq</span> <span class=p>(</span><span class=nv>%rdi</span><span class=p>,</span><span class=nv>%rsi</span><span class=p>),</span> <span class=nv>%rax</span>
+</span></span><span class=line><span class=cl>    <span class=nf>addq</span> <span class=nv>%rdx</span><span class=p>,</span> <span class=nv>%rax</span>
+</span></span><span class=line><span class=cl>    <span class=nf>ret</span>
+</span></span></code></pre></div><p>简单函数因为参数已在寄存器中，可以完全不建立栈帧。</p><p>常见保存责任：</p><ul><li>调用者保存：RAX、RCX、RDX、RSI、RDI、R8～R11。</li><li>被调用者保存：RBX、RBP、R12～R15。</li><li>RSP返回时必须恢复。</li></ul><p>调用边界还要遵守16字节栈对齐要求。</p><div class=mermaid data-mermaid>flowchart TD
+A["调用者准备寄存器参数"] --> B["调整栈并保持对齐"]
+B --> C["call压入返回地址"]
+C --> D["被调用者保存必要寄存器"]
+D --> E["执行函数体"]
+E --> F["恢复寄存器和RSP"]
+F --> G["ret返回"]</div><p>Windows x64调用约定与System V不同，不能把上述参数寄存器规则直接套用到Windows目标程序。</p></li></ul><h4 id=3-dot-6-dot-3-x86-64的基本指令和对齐>3.6.3 x86-64的基本指令和对齐</h4><p>64位操作常用 <code>q</code> 后缀：</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-asm data-lang=asm><span class=line><span class=cl><span class=nf>movq</span> <span class=nv>%rdi</span><span class=p>,</span> <span class=nv>%rax</span>
+</span></span><span class=line><span class=cl><span class=nf>addq</span> <span class=nv>%rsi</span><span class=p>,</span> <span class=nv>%rax</span>
+</span></span><span class=line><span class=cl><span class=nf>subq</span> <span class=no>$8</span><span class=p>,</span> <span class=nv>%rsp</span>
+</span></span></code></pre></div><p>不同宽度转换：</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-asm data-lang=asm><span class=line><span class=cl><span class=nf>movl</span>   <span class=nv>%edi</span><span class=p>,</span> <span class=nv>%eax</span>      <span class=c1>// 写EAX并清RAX高32位
+</span></span></span><span class=line><span class=cl><span class=nf>movslq</span> <span class=nv>%edi</span><span class=p>,</span> <span class=nv>%rax</span>      <span class=c1>// 32位有符号扩展到64位
+</span></span></span><span class=line><span class=cl><span class=nf>movzbq</span> <span class=nv>%dil</span><span class=p>,</span> <span class=nv>%rax</span>      <span class=c1>// 8位零扩展到64位
+</span></span></span></code></pre></div><p>地址计算：</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-asm data-lang=asm><span class=line><span class=cl><span class=nf>leaq</span> <span class=mi>8</span><span class=p>(</span><span class=nv>%rdi</span><span class=p>,</span><span class=nv>%rsi</span><span class=p>,</span><span class=mi>4</span><span class=p>),</span> <span class=nv>%rax</span>
+</span></span></code></pre></div><p>执行 <code>RAX=RDI+RSI×4+8</code> ，不访问内存。</p><p>在常见Linux LP64模型中， <code>int</code> 为4字节， <code>long</code> 和指针为8字节；Windows x64常采用LLP64， <code>long</code> 仍为4字节。跨平台程序不应假设 <code>long</code> 总和指针同宽。</p><ul><li><p>64位结构布局示例</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-c data-lang=c><span class=line><span class=cl><span class=k>struct</span> <span class=n>Node</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=kt>char</span> <span class=n>tag</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=kt>void</span> <span class=o>*</span><span class=n>next</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=kt>int</span> <span class=n>value</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=p>};</span>
+</span></span></code></pre></div><p>典型布局为： <code>tag</code> 偏移0，填充7字节， <code>next</code> 偏移8， <code>value</code> 偏移16，尾部填充4字节，总大小24字节。调整为 <code>pointer,int,char</code> 后，典型大小可能降为16字节。</p></li></ul><ul><li><p>从IA-32迁移到x86-64的风险</p><ul><li>用 <code>int</code> 保存指针导致截断。</li><li>使用错误的格式串输出指针或64位整数。</li><li>假设 <code>sizeof(long)==4</code> 。</li><li>依赖32位结构体偏移。</li><li>内联汇编继续使用旧调用约定。</li><li>忽视16字节栈对齐。</li></ul><p>保存指针的整数表示宜使用 <code>uintptr_t</code> 或 <code>intptr_t</code> 。</p><hr></li></ul><h3 id=本章总结>本章总结</h3><table><thead><tr><th>高级语言结构</th><th>机器级实现基础</th></tr></thead><tbody><tr><td>变量赋值</td><td>数据传送</td></tr><tr><td>算术表达式</td><td>算术、逻辑和移位指令</td></tr><tr><td>指针访问</td><td>地址计算和存储器访问</td></tr><tr><td><code>if</code> / <code>switch</code></td><td>比较、条件跳转、条件传送或跳转表</td></tr><tr><td><code>while</code> / <code>for</code></td><td>条件测试和回跳</td></tr><tr><td>函数调用</td><td>参数、寄存器、栈、 <code>call</code> 和 <code>ret</code></td></tr><tr><td>数组</td><td>首地址+下标×元素宽度</td></tr><tr><td>结构体</td><td>对象基址+固定成员偏移</td></tr><tr><td>联合体</td><td>多个成员共享同一存储空间</td></tr><tr><td>x86-64过程</td><td>寄存器传参、64位寄存器和对齐规则</td></tr></tbody></table><p>程序的机器级表示不是逐字翻译，而是编译器在ISA和ABI约束下完成以下工作：</p><ol><li>选择能够实现源程序语义的指令。</li><li>安排寄存器、栈和内存位置。</li><li>按数据类型计算宽度、地址和对齐。</li><li>把高级控制结构转换成控制流图。</li><li>在不改变可观察语义的前提下进行优化。</li></ol><h3 id=综合自测>综合自测</h3><ol><li>机器指令、汇编指令和汇编伪指令有什么区别？</li><li>ISA与微体系结构分别规定哪些内容？</li><li>为什么不能简单断言RISC一定比CISC快？</li><li><code>movl 8(%ebp),%eax</code> 的源操作数在哪里？</li><li><code>lea</code> 和 <code>mov</code> 在是否访存方面有何区别？</li><li>CF和OF分别反映哪种溢出？</li><li>有符号小于和无符号小于为何使用不同跳转指令？</li><li><code>call</code> 和 <code>ret</code> 如何利用栈保存返回位置？</li><li>二维数组 <code>a[i][j]</code> 的地址怎样计算？</li><li>为什么结构体既有成员间填充又有尾部填充？</li><li>联合体与结构体的存储分配有何区别？</li><li>为什么x86-64中写EAX会影响整个RAX？</li><li>System V x86-64的前6个整数参数通常位于哪些寄存器？</li><li>32位程序迁移到64位时，为什么不能使用 <code>int</code> 保存指针？</li><li>为什么同一段C程序在 <code>-O0</code> 和 <code>-O2</code> 下可能产生差异很大的汇编代码？</li></ol><h3 id=推荐实践>推荐实践</h3><div class=highlight><pre tabindex=0 class=chroma><code class=language-c data-lang=c><span class=line><span class=cl><span class=k>struct</span> <span class=n>Item</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=kt>char</span> <span class=n>tag</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=kt>int</span> <span class=n>value</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=p>};</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=kt>int</span> <span class=nf>sum_positive</span><span class=p>(</span><span class=k>struct</span> <span class=n>Item</span> <span class=o>*</span><span class=n>a</span><span class=p>,</span> <span class=kt>int</span> <span class=n>n</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=kt>int</span> <span class=n>sum</span> <span class=o>=</span> <span class=mi>0</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=k>for</span> <span class=p>(</span><span class=kt>int</span> <span class=n>i</span> <span class=o>=</span> <span class=mi>0</span><span class=p>;</span> <span class=n>i</span> <span class=o>&lt;</span> <span class=n>n</span><span class=p>;</span> <span class=n>i</span><span class=o>++</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=k>if</span> <span class=p>(</span><span class=n>a</span><span class=p>[</span><span class=n>i</span><span class=p>].</span><span class=n>value</span> <span class=o>&gt;</span> <span class=mi>0</span><span class=p>)</span>
+</span></span><span class=line><span class=cl>            <span class=n>sum</span> <span class=o>+=</span> <span class=n>a</span><span class=p>[</span><span class=n>i</span><span class=p>].</span><span class=n>value</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=p>}</span>
+</span></span><span class=line><span class=cl>    <span class=k>return</span> <span class=n>sum</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></div><p>分别生成未优化和优化汇编：</p><p>~ ~ ~ bash
+gcc -m32 -O0 -S test.c -o test_O0.s
+gcc -m32 -O2 -S test.c -o test_O2.s
+~ ~ ~</p><p>重点观察：</p><ul><li>参数怎样取得。</li><li><code>struct Item</code> 的大小及 <code>value</code> 偏移。</li><li>数组元素地址怎样计算。</li><li>循环和条件分别对应哪些跳转。</li><li><code>sum</code> 和 <code>i</code> 位于栈还是寄存器。</li><li>优化后是否省略栈帧、合并分支或改变循环结构。</li></ul></div><footer class=article-footer><span>归档于</span>
+<a href=/categories/cs-architecture/>Cs-Architecture</a></footer></article><aside class="toc glass-panel" aria-label=文章目录><strong>本文目录</strong><nav id=TableOfContents><ul><li><a href=#程序的转换及机器级表示>程序的转换及机器级表示</a></li><li><a href=#本章学习地图>本章学习地图</a><ul><li><a href=#1-程序转换概述>1 程序转换概述</a><ul><li><a href=#1-dot-1-机器指令及汇编指令>1.1 机器指令及汇编指令</a></li><li><a href=#1-dot-2-指令集体系结构>1.2 指令集体系结构</a></li><li><a href=#3-dot-1-dot-3-指令系统设计风格>3.1.3 指令系统设计风格</a></li><li><a href=#3-dot-1-dot-4-生成机器代码的过程>3.1.4 生成机器代码的过程</a></li></ul></li><li><a href=#3-dot-2-ia-32指令系统概述>3.2 IA-32指令系统概述</a><ul><li><a href=#3-dot-2-dot-1-数据类型及其格式>3.2.1 数据类型及其格式</a></li><li><a href=#3-dot-2-dot-2-寄存器组织和寻址方式>3.2.2 寄存器组织和寻址方式</a></li><li><a href=#3-dot-2-dot-3-机器指令格式>3.2.3 机器指令格式</a></li></ul></li><li><a href=#3-dot-3-ia-32常用指令类型及其操作>3.3 IA-32常用指令类型及其操作</a><ul><li><a href=#3-dot-3-dot-1-传送指令>3.3.1 传送指令</a></li><li><a href=#3-dot-3-dot-2-定点算术运算指令>3.3.2 定点算术运算指令</a></li><li><a href=#3-dot-3-dot-3-按位运算指令>3.3.3 按位运算指令</a></li><li><a href=#3-dot-3-dot-4-程序执行流控制指令>3.3.4 程序执行流控制指令</a></li></ul></li><li><a href=#3-dot-4-c语言程序的机器级表示>3.4 C语言程序的机器级表示</a><ul><li><a href=#3-dot-4-dot-1-过程调用的机器级表示>3.4.1 过程调用的机器级表示</a></li><li><a href=#3-dot-4-dot-2-选择语句的机器级表示>3.4.2 选择语句的机器级表示</a></li><li><a href=#3-dot-4-dot-3-循环结构的机器级表示>3.4.3 循环结构的机器级表示</a></li></ul></li><li><a href=#3-dot-5-复杂数据类型的分配和访问>3.5 复杂数据类型的分配和访问</a><ul><li><a href=#3-dot-5-dot-1-数组的分配和访问>3.5.1 数组的分配和访问</a></li><li><a href=#3-dot-5-dot-2-结构体数据的分配和访问>3.5.2 结构体数据的分配和访问</a></li><li><a href=#3-dot-5-dot-3-联合体数据的分配和访问>3.5.3 联合体数据的分配和访问</a></li><li><a href=#3-dot-5-dot-4-数据的对齐方式>3.5.4 数据的对齐方式</a></li></ul></li><li><a href=#3-dot-6-兼容ia-32的64位系统>3.6 兼容IA-32的64位系统</a><ul><li><a href=#3-dot-6-dot-1-x86-64的基本特点>3.6.1 x86-64的基本特点</a></li><li><a href=#3-dot-6-dot-2-x86-64的过程调用>3.6.2 x86-64的过程调用</a></li><li><a href=#3-dot-6-dot-3-x86-64的基本指令和对齐>3.6.3 x86-64的基本指令和对齐</a></li></ul></li><li><a href=#本章总结>本章总结</a></li><li><a href=#综合自测>综合自测</a></li><li><a href=#推荐实践>推荐实践</a></li></ul></li></ul></nav></aside></div></main><footer class=site-footer><div class=footer-inner><p>&copy; 2023–2026 你的名字. 保留所有权利。</p><div class=footer-meta></div></div></footer><script defer src=https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js crossorigin=anonymous></script><script defer src=https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js crossorigin=anonymous></script><script>document.addEventListener("DOMContentLoaded",function(){typeof katex!="undefined"&&document.querySelectorAll(".katex-block[data-math]").forEach(function(e){try{katex.render(e.textContent,e,{displayMode:!0,throwOnError:!1})}catch{}}),typeof renderMathInElement=="function"&&renderMathInElement(document.body,{delimiters:[{left:"$$",right:"$$",display:!0},{left:"\\[",right:"\\]",display:!0},{left:"$",right:"$",display:!1},{left:"\\(",right:"\\)",display:!1}],ignoredTags:["script","noscript","style","textarea","pre","code"],throwOnError:!1})})</script><script type=module>
+  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11.17.2/dist/mermaid.esm.min.mjs";
+
+  
+  
+  
+  const cfg = {"lineColor":"","lineStyle":"","lineWidth":"","nodeBg":"","nodeBorder":"","nodeRadius":"","nodeTextColor":""};
+
+  const nodes = Array.from(document.querySelectorAll(".mermaid[data-mermaid]"));
+  const sources = nodes.map((node) => node.textContent);
+  const isDark = () => document.documentElement.getAttribute("data-theme") === "dark";
+
+  
+  const cssVar = (name, fallback) =>
+    getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
+  
+  const pick = (key, fallback) => (cfg[key] || "").trim() || fallback;
+  
+  const dashArrays = { solid: "0", dashed: "6 5", dotted: "2 3" };
+
+  const draw = async () => {
+    const dark = isDark();
+    const accent = cssVar("--accent", dark ? "#6aa7ff" : "#2f7de1");
+    const textColor = pick("nodeTextColor", cssVar("--prose-text", dark ? "#e2e8f2" : "#283448"));
+    const radius = pick("nodeRadius", "10px");
+    const lineWidth = pick("lineWidth", "1.6px");
+    
+    
+    const clusterBg = dark ? "#101a2c" : "#ece7dc";
+    const lineColor = pick("lineColor", dark ? "#8fa5c6" : "#5a6b85");
+
+    mermaid.initialize({
+      startOnLoad: false,
+      securityLevel: "strict",
+      theme: "base",
+      themeVariables: {
+        primaryColor: pick("nodeBg", dark ? "#141f36" : "#ffffff"),
+        primaryBorderColor: pick("nodeBorder", accent),
+        nodeBorder: pick("nodeBorder", accent),
+        primaryTextColor: textColor,
+        nodeTextColor: textColor,
+        textColor: textColor,
+        lineColor: lineColor,
+        
+        edgeLabelBackground: cssVar("--code-bg", dark ? "#0b1220" : "#f3eee5")
+      },
+      themeCSS: `
+        .node rect { rx: ${radius} !important; ry: ${radius} !important; }
+        .edge-thickness-normal { stroke-width: ${lineWidth} !important; }
+        .edge-thickness-thick { stroke-width: calc(${lineWidth} * 2) !important; }
+        .edge-pattern-solid { stroke-dasharray: ${dashArrays[pick("lineStyle", "solid")] || "0"} !important; }
+        .cluster rect { fill: ${clusterBg} !important; stroke: ${lineColor} !important; }
+        .cluster-label, .cluster-label span { color: ${textColor} !important; }
+      `,
+      
+      fontFamily: getComputedStyle(document.body).fontFamily || "sans-serif"
+    });
+    
+    nodes.forEach((node, index) => {
+      node.textContent = sources[index];
+      node.removeAttribute("data-processed");
+    });
+    await mermaid.run({ nodes });
+  };
+
+  try {
+    await draw();
+    new MutationObserver(draw).observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["data-theme"]
+    });
+  } catch (error) {
+    
+    console.error("[mermaid] 渲染失败：", error);
+  }
+</script><script src=/js/main.min.d67c76b16258bc785c9a7bda52b7326bf67bb61290c8e66e975ed27a7330b4c9.js integrity="sha256-1nx2sWJYvHhcmnvaUrcya/Z7thKQyOZul17SenMwtMk=" defer></script></body></html>

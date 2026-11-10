@@ -1,0 +1,229 @@
+<!doctype html><html lang=zh-CN dir=ltr><head><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><meta name=color-scheme content="light dark"><meta name=theme-color content="#08111f" media="(prefers-color-scheme: dark)"><meta name=theme-color content="#fff5e1" media="(prefers-color-scheme: light)"><script>document.documentElement.classList.add("js"),function(){try{var e,t=localStorage.getItem("site-theme");t==="light"||t==="dark"?document.documentElement.setAttribute("data-theme",t):document.documentElement.setAttribute("data-theme",window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"),e=localStorage.getItem("site-palette"),(e==="macos"||e==="github"||e==="gruvbox")&&document.documentElement.setAttribute("data-palette",e)}catch{}}()</script><title>Program Acess Memory · 我的博客</title><meta name=description content='一、存储器概述 1.1 存储器的分类 按存储介质 类型 特点 典型产品 半导体存储器 速度快、体积小、功耗低 RAM、ROM、Flash 磁表面存储器 容量大、价格低、速度慢 硬盘、磁带 光存储器 容量大、可长期保存 CD、DVD、蓝光 按存取方式 类型 特点 示例 随机存取（RAM） 随机读写，时间与地址无关 SRAM、DRAM 只读（ROM） 只能读（或写入受限） Mask ROM、EPROM、EEPROM 顺序存取（SAM） 按顺序访问 磁带 直接存取（DAM） 先定位区域再顺序查找 磁盘 1.2 主存储器的组成 flowchart LR subgraph 主存["主存储器"] MAR["地址寄存器<br/>MAR"] --> 译码["地址译码器"] 译码 --> 存储体["存储体<br/>(Memory Array)"] 存储体 --> MDR["数据寄存器<br/>MDR"] 读写控制["读写控制电路"] --> 存储体 end CPU["CPU"] -->|地址| MAR MDR -->|数据| CPU CPU -->|读/写命令| 读写控制 读操作 ：CPU 送地址 → MAR → 译码 → 选中单元 → 数据读出到 MDR → CPU 取走 写操作 ：CPU 送地址到 MAR、数据到 MDR → 发写信号 → 写入指定单元
+'><meta name=author content="你的名字"><link rel=canonical href=https://quhongbin.github.io/cs/org-arch/memorymanagement/><link rel=alternate hreflang=zh-CN href=https://quhongbin.github.io/cs/org-arch/memorymanagement/><meta property="og:type" content="article"><meta property="og:title" content="Program Acess Memory · 我的博客"><meta property="og:description" content='一、存储器概述 1.1 存储器的分类 按存储介质 类型 特点 典型产品 半导体存储器 速度快、体积小、功耗低 RAM、ROM、Flash 磁表面存储器 容量大、价格低、速度慢 硬盘、磁带 光存储器 容量大、可长期保存 CD、DVD、蓝光 按存取方式 类型 特点 示例 随机存取（RAM） 随机读写，时间与地址无关 SRAM、DRAM 只读（ROM） 只能读（或写入受限） Mask ROM、EPROM、EEPROM 顺序存取（SAM） 按顺序访问 磁带 直接存取（DAM） 先定位区域再顺序查找 磁盘 1.2 主存储器的组成 flowchart LR subgraph 主存["主存储器"] MAR["地址寄存器<br/>MAR"] --> 译码["地址译码器"] 译码 --> 存储体["存储体<br/>(Memory Array)"] 存储体 --> MDR["数据寄存器<br/>MDR"] 读写控制["读写控制电路"] --> 存储体 end CPU["CPU"] -->|地址| MAR MDR -->|数据| CPU CPU -->|读/写命令| 读写控制 读操作 ：CPU 送地址 → MAR → 译码 → 选中单元 → 数据读出到 MDR → CPU 取走 写操作 ：CPU 送地址到 MAR、数据到 MDR → 发写信号 → 写入指定单元
+'><meta property="og:url" content="https://quhongbin.github.io/cs/org-arch/memorymanagement/"><meta property="og:site_name" content="我的博客"><link rel=stylesheet href=/css/main.min.5664322d273b99bd3145ea73ab5faaff04a3f3bc10723ece2fa57bb9315ef6da.css integrity="sha256-VmQyLSc7mb0xRepzq1+q/wSj87wQcj7OL6V7uTFe9to="><link rel=stylesheet href=/css/site-palettes.min.0f2ed388ed0b74ab72dcd2b144a6a19acbd23a4edca157c36eecdffad3dfe7bf.css integrity="sha256-Dy7TiO0LdKty3NKxRKahmsvSOk7coVfDbuzf+tPf578="><link rel=stylesheet href=/css/code-themes.min.78bd37b0419e6af001a97d6754f5264cacc1413c97b2e5d67033547083130a12.css integrity="sha256-eL03sEGeavABqX1nVPUmTKzBQTyXsuXWcDNUcIMTChI="><link rel=stylesheet href=https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css crossorigin=anonymous><style>:root{--content-width:1400px;--article-width:1100px;--toc-width:250px;--article-pad:clamp(25px, 6vw, 72px)}</style><link rel=icon href=/images/avatar.webp></head><body class=page-kind-page><a class=skip-link href=#main-content>跳到正文</a><div class=site-background aria-hidden=true></div><header class=site-header data-site-header><div class=header-inner><a class=site-brand href=/ aria-label=我的博客><img class=brand-avatar src=/images/avatar.webp alt width=44 height=44>
+<span class=brand-copy><strong>我的博客</strong>
+<small>在代码与生活之间</small>
+</span></a><button class=menu-toggle type=button aria-expanded=false aria-controls=site-navigation data-menu-toggle>
+<span class=menu-toggle-lines aria-hidden=true></span>
+<span class=sr-only>打开或关闭菜单</span></button><nav id=site-navigation class=site-navigation aria-label=主导航 data-navigation><ul class=nav-menu><li><a href=/>首页</a></li><li class="nav-item has-categories" data-categories-item><a href=/posts/ data-categories-trigger aria-haspopup=true>文章</a><ul class=categories-dropdown><li class=categories-all><a href=/posts/>全部文章</a></li><li><a href=/categories/godot/><span class=cat-name>Godot</span>
+<span class=term-count>8</span></a></li><li><a href=/categories/cs-architecture/><span class=cat-name>Cs-Architecture</span>
+<span class=term-count>7</span></a></li><li><a href=/categories/linux-coffee/><span class=cat-name>Linux Coffee</span>
+<span class=term-count>2</span></a></li><li><a href=/categories/math/><span class=cat-name>Math</span>
+<span class=term-count>2</span></a></li><li><a href=/categories/algorithm/><span class=cat-name>Algorithm</span>
+<span class=term-count>1</span></a></li><li><a href=/categories/data-struct/><span class=cat-name>Data Struct</span>
+<span class=term-count>1</span></a></li></ul></li><li><a href=/notes/>速记</a></li><li><a href=/tags/>标签</a></li><li><a href=/logs/>日志</a></li><li><a href=/about/>关于</a></li></ul><div class=header-social aria-label=社交链接><a href=https://github.com/your-name title=GitHub aria-label=GitHub target=_blank rel="noopener noreferrer"><svg class="icon icon-github" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 .7A11.5 11.5.0 008.36 23.11c.58.11.79-.25.79-.56v-2.23c-3.22.7-3.9-1.37-3.9-1.37-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.71.08-.71 1.17.08 1.78 1.2 1.78 1.2 1.04 1.78 2.72 1.27 3.38.97.1-.75.4-1.27.74-1.56-2.57-.29-5.27-1.28-5.27-5.68.0-1.25.45-2.28 1.19-3.08-.12-.29-.52-1.46.11-3.04.0.0.97-.31 3.16 1.18a10.98 10.98.0 015.76.0c2.19-1.49 3.15-1.18 3.15-1.18.63 1.58.23 2.75.11 3.04.74.8 1.19 1.83 1.19 3.08.0 4.41-2.71 5.38-5.29 5.67.42.36.79 1.07.79 2.16v3.2c0 .31.21.68.8.56A11.5 11.5.0 0012 .7z"/></svg>
+</a><a href=mailto:hello@example.com title=Email aria-label=Email><svg class="icon icon-email" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 4h18a2 2 0 012 2v12a2 2 0 01-2 2H3a2 2 0 01-2-2V6a2 2 0 012-2zm0 2 9 6 9-6H3zm18 12V8.4l-9 6-9-6V18h18z"/></svg></a></div><div class=theme-picker><button class=theme-toggle type=button data-theme-toggle aria-label="切换亮色 / 暗色主题" title="切换亮色 / 暗色主题">
+<svg class="icon icon-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><g stroke-linecap="round"><line x1="12" y1="2.5" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="21.5"/><line x1="2.5" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="21.5" y2="12"/><line x1="5.2" y1="5.2" x2="6.95" y2="6.95"/><line x1="17.05" y1="17.05" x2="18.8" y2="18.8"/><line x1="5.2" y1="18.8" x2="6.95" y2="17.05"/><line x1="17.05" y1="6.95" x2="18.8" y2="5.2"/></g></svg>
+<svg class="icon icon-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 019.5 4a.5.5.0 00-.78-.55 9.5 9.5.0 1011.83 11.83.5.5.0 00-.55-.78z"/></svg></button><div class=palette-menu role=group aria-label=主题配色><strong>主题配色</strong><div class=palette-group-label>亮色</div><button class=palette-option type=button data-palette-value=default data-palette-mode=light>站点默认 · 亮色</button>
+<button class=palette-option type=button data-palette-value=macos data-palette-mode=light>macOS · 亮色</button>
+<button class=palette-option type=button data-palette-value=github data-palette-mode=light>GitHub · 亮色</button>
+<button class=palette-option type=button data-palette-value=gruvbox data-palette-mode=light>Gruvbox · 亮色</button><div class=palette-group-label>暗色</div><button class=palette-option type=button data-palette-value=default data-palette-mode=dark>站点默认 · 暗色</button>
+<button class=palette-option type=button data-palette-value=macos data-palette-mode=dark>macOS · 暗色</button>
+<button class=palette-option type=button data-palette-value=github data-palette-mode=dark>GitHub · 暗色</button>
+<button class=palette-option type=button data-palette-value=gruvbox data-palette-mode=dark>Gruvbox · 暗色</button></div></div><details class=language-switcher><summary aria-label=选择语言><span aria-hidden=true>文/A</span>
+<span>简体中文</span></summary><ul><li><a href=/cs/org-arch/memorymanagement/ lang=zh-CN aria-current=true>简体中文</a></li></ul></details></nav></div></header><main id=main-content class=site-main><div class=article-layout><article class="article glass-panel reveal"><div class=reading-progress aria-hidden=true><span data-reading-progress></span></div><header class=article-header><a class=back-link href=/cs/>← 返回列表</a><h1>Program Acess Memory</h1><div class=article-meta><time datetime=2026-09-11>September 11, 2026</time>
+<span>阅读约 10 分钟</span>
+<span>4796 字</span></div><div class=tag-list><a class=tag href=/tags/computer-organization-and-architecture/>#Computer Organization and Architecture</a></div></header><div class="prose article-content" data-article-content><h2 id=一-存储器概述>一、存储器概述</h2><h3 id=1-dot-1-存储器的分类>1.1 存储器的分类</h3><h4 id=按存储介质>按存储介质</h4><table><thead><tr><th>类型</th><th>特点</th><th>典型产品</th></tr></thead><tbody><tr><td>半导体存储器</td><td>速度快、体积小、功耗低</td><td>RAM、ROM、Flash</td></tr><tr><td>磁表面存储器</td><td>容量大、价格低、速度慢</td><td>硬盘、磁带</td></tr><tr><td>光存储器</td><td>容量大、可长期保存</td><td>CD、DVD、蓝光</td></tr></tbody></table><h4 id=按存取方式>按存取方式</h4><table><thead><tr><th>类型</th><th>特点</th><th>示例</th></tr></thead><tbody><tr><td>随机存取（RAM）</td><td>随机读写，时间与地址无关</td><td>SRAM、DRAM</td></tr><tr><td>只读（ROM）</td><td>只能读（或写入受限）</td><td>Mask ROM、EPROM、EEPROM</td></tr><tr><td>顺序存取（SAM）</td><td>按顺序访问</td><td>磁带</td></tr><tr><td>直接存取（DAM）</td><td>先定位区域再顺序查找</td><td>磁盘</td></tr></tbody></table><h3 id=1-dot-2-主存储器的组成>1.2 主存储器的组成</h3><div class=mermaid data-mermaid>flowchart LR
+subgraph 主存["主存储器"]
+MAR["地址寄存器&lt;br/>MAR"] --> 译码["地址译码器"]
+译码 --> 存储体["存储体&lt;br/>(Memory Array)"]
+存储体 --> MDR["数据寄存器&lt;br/>MDR"]
+读写控制["读写控制电路"] --> 存储体
+end
+CPU["CPU"] -->|地址| MAR
+MDR -->|数据| CPU
+CPU -->|读/写命令| 读写控制</div><p><strong>读操作</strong> ：CPU 送地址 → MAR → 译码 → 选中单元 → 数据读出到 MDR → CPU 取走
+<strong>写操作</strong> ：CPU 送地址到 MAR、数据到 MDR → 发写信号 → 写入指定单元</p><h3 id=1-dot-3-存储器层次化结构>1.3 存储器层次化结构</h3><div class=mermaid data-mermaid>flowchart TB
+A["寄存器&lt;br/>速度最快 · 容量最小 · 价格最高"]
+B["L1 / L2 / L3 Cache&lt;br/>(SRAM)"]
+C["主存&lt;br/>(DRAM)"]
+D["SSD / HDD&lt;br/>(磁盘)"]
+E["光盘 / 磁带&lt;br/>速度最慢 · 容量最大 · 价格最低"]
+A --> B --> C --> D --> E
+style A fill:#ff6b6b,color:#fff
+style B fill:#ffa502,color:#fff
+style C fill:#2ed573,color:#fff
+style D fill:#1e90ff,color:#fff
+style E fill:#5352ed,color:#fff</div><p><strong>设计思想</strong> ：上层是下层的缓存，利用局部性原理，在速度、容量、价格之间取得平衡。</p><h3 id=1-dot-4-程序访问的局部性>1.4 程序访问的局部性</h3><table><thead><tr><th>类型</th><th>含义</th><th>示例</th></tr></thead><tbody><tr><td><strong>时间局部性</strong></td><td>最近访问的信息不久后再次访问</td><td>循环体指令、循环变量</td></tr><tr><td><strong>空间局部性</strong></td><td>访问某单元后，附近单元也会被访问</td><td>顺序执行指令、数组遍历</td></tr></tbody></table><hr><h2 id=二-主存与-cpu-的连接>二、主存与 CPU 的连接</h2><h3 id=2-dot-1-sram-与-dram>2.1 SRAM 与 DRAM</h3><table><thead><tr><th>特性</th><th>SRAM</th><th>DRAM</th></tr></thead><tbody><tr><td>存储原理</td><td>触发器</td><td>电容</td></tr><tr><td>是否刷新</td><td>不需要</td><td>需要定期刷新</td></tr><tr><td>速度</td><td>快</td><td>较慢</td></tr><tr><td>集成度</td><td>低</td><td>高</td></tr><tr><td>价格</td><td>高</td><td>低</td></tr><tr><td>用途</td><td>Cache</td><td>主存</td></tr></tbody></table><h3 id=2-dot-2-dram-刷新方式>2.2 DRAM 刷新方式</h3><table><thead><tr><th>刷新方式</th><th>说明</th><th>特点</th></tr></thead><tbody><tr><td>集中刷新</td><td>间隔内集中刷新所有行</td><td>有死时间</td></tr><tr><td>分散刷新</td><td>每个周期后刷新一行</td><td>无死时间，速度降低</td></tr><tr><td>异步刷新</td><td>间隔内均匀刷新</td><td>折中，常用</td></tr></tbody></table><h3 id=2-dot-3-现代-dram-演进>2.3 现代 DRAM 演进</h3><div class=mermaid data-mermaid>timeline
+title DRAM 技术演进
+1990s : SDRAM
+2000s : DDR : DDR2
+2010s : DDR3 : DDR4 : LPDDR
+2020s : DDR5 : HBM : LPDDR5X</div><h3 id=2-dot-4-主存容量扩展>2.4 主存容量扩展</h3><ul><li><strong>位扩展</strong> ：增加数据宽度（多片并联数据线）</li><li><strong>字扩展</strong> ：增加单元数量（高位地址译码产生片选）</li><li><strong>字位同时扩展</strong> ：两者结合</li></ul><h3 id=2-dot-5-load-store-指令的操作过程>2.5 Load/Store 指令的操作过程</h3><div class=mermaid data-mermaid>flowchart LR
+subgraph Load["Load: 内存 → 寄存器"]
+L1["IF 取指"] --> L2["ID 译码+读基址"]
+L2 --> L3["EX 计算有效地址"]
+L3 --> L4["MEM 读主存"]
+L4 --> L5["WB 写回寄存器"]
+end
+subgraph Store["Store: 寄存器 → 内存"]
+S1["IF 取指"] --> S2["ID 译码+读地址/数据"]
+S2 --> S3["EX 计算有效地址"]
+S3 --> S4["MEM 写主存"]
+S4 --> S5["WB 无操作"]
+end</div><hr><h2 id=三-硬盘存储器>三、硬盘存储器</h2><h3 id=3-dot-1-磁盘结构>3.1 磁盘结构</h3><div class=mermaid data-mermaid>flowchart TB
+subgraph 磁盘["磁盘物理结构"]
+盘片["盘片（多个同轴）"]
+磁道["磁道（同心圆）"]
+扇区["扇区（磁道分段）"]
+柱面["柱面（所有盘片同半径磁道）"]
+磁头["磁头（每盘面一个）"]
+end
+盘片 --> 磁道 --> 扇区
+盘片 --> 柱面
+磁头 -.->|读写| 磁道</div><p><strong>磁盘地址</strong> ：柱面号 · 磁头号 · 扇区号</p><h3 id=3-dot-2-磁盘访问时间>3.2 磁盘访问时间</h3><div class=highlight><pre tabindex=0 class=chroma><code class=language-text data-lang=text><span class=line><span class=cl>访问时间 = 寻道时间 + 旋转延迟 + 传输时间
+</span></span></code></pre></div><table><thead><tr><th>组成</th><th>说明</th><th>典型值（7200rpm）</th></tr></thead><tbody><tr><td>寻道时间</td><td>磁头移到目标磁道</td><td>5–10 ms</td></tr><tr><td>旋转延迟</td><td>等待目标扇区转到磁头</td><td>平均 <code>4.17 ms</code></td></tr><tr><td>传输时间</td><td>实际读写数据</td><td>通常很短</td></tr></tbody></table><blockquote><p>平均旋转延迟 = 60 / (2 × 转速 rpm) 秒</p></blockquote><h3 id=3-dot-3-ssd-固态硬盘>3.3 SSD 固态硬盘</h3><div class=mermaid data-mermaid>flowchart TB
+subgraph SSD["SSD 结构"]
+NAND["NAND Flash 芯片&lt;br/>存储数据"]
+控制器["SSD 控制器&lt;br/>FTL 转换层"]
+DRAM["DRAM 缓存&lt;br/>映射表"]
+接口["主机接口&lt;br/>SATA / NVMe"]
+end
+控制器 --> NAND
+控制器 --> DRAM
+控制器 --> 接口</div><p><strong>NAND 类型对比</strong> ：</p><table><thead><tr><th>类型</th><th>单元位数</th><th>寿命</th><th>成本</th></tr></thead><tbody><tr><td>SLC</td><td>1 bit</td><td>最长</td><td>最高</td></tr><tr><td>MLC</td><td>2 bit</td><td>中等</td><td>中等</td></tr><tr><td>TLC</td><td>3 bit</td><td>较短</td><td>较低</td></tr><tr><td>QLC</td><td>4 bit</td><td>最短</td><td>最低</td></tr></tbody></table><p><strong>SSD 关键技术</strong> ：磨损均衡（Wear Leveling）、垃圾回收（GC）、TRIM 命令、FTL（闪存转换层）。</p><hr><h2 id=四-高速缓冲存储器-cache>四、高速缓冲存储器（Cache）</h2><h3 id=4-dot-1-cache-工作原理>4.1 Cache 工作原理</h3><div class=mermaid data-mermaid>flowchart TD
+A["CPU 发地址"] --> B{"Cache 命中?"}
+B -->|命中| C["直接读 Cache&lt;br/>返回数据"]
+B -->|缺失| D["从主存读块&lt;br/>调入 Cache"]
+D --> E["更新 Cache 行"]
+E --> C</div><p><strong>关键指标</strong> ：</p><ul><li><strong>命中率</strong> ：访问命中 Cache 的比例</li><li><strong>平均访问时间</strong> = 命中率 × 命中时间 + 缺失率 × (命中时间 + 缺失代价)</li></ul><h3 id=4-dot-2-三种映射方式>4.2 三种映射方式</h3><div class=mermaid data-mermaid>flowchart TB
+subgraph 直接映射["直接映射 Direct Mapped"]
+DM1["主存块 → 唯一 Cache 行&lt;br/>行号 = 块号 mod 行数"]
+end
+subgraph 全相联["全相联 Fully Associative"]
+FA1["主存块 → 任意 Cache 行&lt;br/>需并行比较所有 Tag"]
+end
+subgraph 组相联["N 路组相联 Set Associative"]
+SA1["主存块 → 唯一组&lt;br/>组内任意行"]
+end</div><table><thead><tr><th>映射方式</th><th>冲突缺失</th><th>硬件复杂度</th><th>命中时间</th></tr></thead><tbody><tr><td>直接映射</td><td>最高</td><td>最低</td><td>最短</td></tr><tr><td>组相联</td><td>中等</td><td>中等</td><td>中等</td></tr><tr><td>全相联</td><td>最低</td><td>最高</td><td>最长</td></tr></tbody></table><h3 id=4-dot-3-地址结构-以直接映射为例>4.3 地址结构（以直接映射为例）</h3><div class=mermaid data-mermaid>flowchart LR
+subgraph 地址["32 位物理地址"]
+direction LR
+Tag["Tag&lt;br/>标记位"]
+Index["Index&lt;br/>行索引"]
+Offset["Offset&lt;br/>块内偏移"]
+end
+Tag --> 比较["并行比较&lt;br/>Tag + 有效位"]</div><h3 id=4-dot-4-替换算法与写策略>4.4 替换算法与写策略</h3><p><strong>替换算法</strong> ：</p><table><thead><tr><th>算法</th><th>思想</th><th>特点</th></tr></thead><tbody><tr><td>随机</td><td>随机选行</td><td>简单，性能一般</td></tr><tr><td>FIFO</td><td>替换最早调入</td><td>可能换掉常用数据</td></tr><tr><td>LRU</td><td>替换最久未用</td><td>命中率高，硬件复杂</td></tr><tr><td>Clock</td><td>近似 LRU</td><td>实现简单，常用</td></tr></tbody></table><p><strong>写策略</strong> ：</p><table><thead><tr><th>策略</th><th>说明</th></tr></thead><tbody><tr><td>写直达（Write Through）</td><td>同时写 Cache 和主存，一致性好但慢</td></tr><tr><td>写回（Write Back）</td><td>只写 Cache，替换时才写回主存，快但可能不一致</td></tr><tr><td>写分配</td><td>写缺失时先调入 Cache</td></tr><tr><td>非写分配</td><td>写缺失时直接写主存</td></tr></tbody></table><h3 id=4-dot-5-三类-cache-缺失-3c-模型>4.5 三类 Cache 缺失（3C 模型）</h3><div class=mermaid data-mermaid>flowchart TD
+A["Cache 缺失"] --> B{"原因?"}
+B -->|首次访问| C["强制缺失 Cold"]
+B -->|工作集过大| D["容量缺失 Capacity"]
+B -->|映射到同一行| E["冲突缺失 Conflict"]
+C --> C1["增大块大小、硬件预取"]
+D --> D1["增大 Cache 容量"]
+E --> E1["提高相联度"]</div><hr><h2 id=五-虚拟存储器>五、虚拟存储器</h2><h3 id=5-dot-1-虚拟存储器概述>5.1 虚拟存储器概述</h3><p>虚拟存储器为每个进程提供独立、连续、巨大的虚拟地址空间，通过 MMU 将虚拟地址映射为物理地址。</p><p><strong>与 Cache 的对比</strong> ：</p><table><thead><tr><th>特性</th><th>Cache</th><th>虚拟存储器</th></tr></thead><tbody><tr><td>目标</td><td>弥补 CPU 与主存速度差</td><td>弥补主存与磁盘容量差</td></tr><tr><td>管理方</td><td>硬件</td><td>OS + 硬件（MMU/TLB）</td></tr><tr><td>块大小</td><td>16–128 B（Cache 行）</td><td>4KB–2MB（页面）</td></tr><tr><td>缺失代价</td><td><code>100 ns</code> （访主存）</td><td><code>10 ms</code> （访磁盘）</td></tr><tr><td>透明性</td><td>完全透明</td><td>缺页由 OS 处理</td></tr></tbody></table><h3 id=5-dot-2-地址翻译过程>5.2 地址翻译过程</h3><div class=mermaid data-mermaid>flowchart LR
+subgraph 虚拟地址["虚拟地址"]
+VPN["虚拟页号 VPN"]
+Offset["页内偏移"]
+end
+VPN --> TLB{"TLB 查找"}
+TLB -->|命中| PPN1["物理页号 PPN"]
+TLB -->|缺失| PT["访问页表（内存）"]
+PT --> PPN2["物理页号 PPN"]
+PPN1 --> 物理地址
+PPN2 --> 物理地址
+subgraph 物理地址["物理地址"]
+PPN["物理页号 PPN"]
+Offset2["页内偏移（不变）"]
+end</div><h3 id=5-dot-3-缺页异常处理>5.3 缺页异常处理</h3><div class=mermaid data-mermaid>sequenceDiagram
+participant CPU
+participant OS as 操作系统
+participant Disk as 磁盘
+CPU->>OS: 访问不在内存的页 → 缺页异常
+OS->>OS: 保存现场，陷入内核
+OS->>OS: 查找页在磁盘位置
+alt 内存已满
+OS->>OS: 选一页换出（置换算法）
+OS->>Disk: 脏页写回磁盘
+end
+OS->>Disk: 读入所需页到内存
+Disk-->>OS: 数据就绪
+OS->>OS: 更新页表，标记有效
+OS->>CPU: 恢复现场，重新执行指令</div><h3 id=5-dot-4-多级页表-x86-64-四级页表>5.4 多级页表（x86-64 四级页表）</h3><div class=mermaid data-mermaid>flowchart LR
+CR3["CR3&lt;br/>PML4 基址"] --> PML4["PML4 索引&lt;br/>9 位"]
+PML4 --> PDPT["PDPT 索引&lt;br/>9 位"]
+PDPT --> PD["PDT 索引&lt;br/>9 位"]
+PD --> PT["PT 索引&lt;br/>9 位"]
+PT --> PPN["物理页号 PPN&lt;br/>40 位"]
+PPN --> Offset["页内偏移&lt;br/>12 位"]</div><p><strong>优点</strong> ：不需要为未使用的页表分配内存，节省空间。</p><h3 id=5-dot-5-存储保护>5.5 存储保护</h3><p>每个 PTE 包含保护位：</p><table><thead><tr><th>位</th><th>含义</th></tr></thead><tbody><tr><td>Valid</td><td>页面是否在内存</td></tr><tr><td>R/W</td><td>读/写权限</td></tr><tr><td>U/S</td><td>用户/管理员态</td></tr><tr><td>Dirty</td><td>是否被修改</td></tr><tr><td>Accessed</td><td>是否被访问</td></tr><tr><td>NX</td><td>是否禁止执行（防攻击）</td></tr></tbody></table><hr><h2 id=六-现代技术扩展>六、现代技术扩展</h2><h3 id=6-dot-1-新型存储技术>6.1 新型存储技术</h3><div class=mermaid data-mermaid>flowchart TB
+subgraph 新型存储["新型存储技术"]
+OPTANE["3D XPoint / Optane&lt;br/>接近 DRAM 速度 + NAND 容量"]
+ZNAND["Z-NAND&lt;br/>SLC 低延迟 NAND"]
+MRAM["MRAM / ReRAM / FeRAM&lt;br/>下一代非易失"]
+end</div><h3 id=6-dot-2-cxl-compute-express-link>6.2 CXL（Compute Express Link）</h3><ul><li>基于 PCIe 5.0 的缓存一致性互连</li><li>支持内存池化（Memory Pooling），多设备共享内存</li><li>适用于 AI、高性能计算</li></ul><h3 id=6-dot-3-cache-优化技术>6.3 Cache 优化技术</h3><ul><li><strong>硬件预取</strong> ：流预取器、步长预取器，自动提前加载</li><li><strong>非时序访问（NT）</strong> ：只访问一次的数据绕过 Cache</li><li><strong>Intel CAT</strong> ：L3 Cache 分区，防止"吵闹邻居"</li></ul><h3 id=6-dot-4-大页与-thp>6.4 大页与 THP</h3><ul><li>传统 4KB 页 → TLB 命中率低</li><li>大页（2MB/1GB）→ 减少 TLB 缺失</li><li><strong>THP（透明大页）</strong> ：OS 自动合并小页为大页</li><li>适用：数据库、JVM 堆等内存密集型应用</li></ul><h3 id=6-dot-5-存算一体>6.5 存算一体</h3><div class=mermaid data-mermaid>flowchart LR
+A["传统架构&lt;br/>计算与存储分离&lt;br/>数据搬运瓶颈"] --> B["PIM 存内计算&lt;br/>计算单元靠近内存"]
+B --> C["CIM 存算一体&lt;br/>利用器件物理特性计算"]</div><hr><h2 id=七-本章练习题>七、本章练习题</h2><h3 id=一-单项选择题>一、单项选择题</h3><ol><li><p>&ldquo;最近访问的数据不久后可能再次被访问"属于？</p><ul><li>A. 空间局部性</li><li>B. 时间局部性</li><li>C. 顺序局部性</li><li>D. 分支局部性</li></ul></li><li><p>需要定期刷新的存储器是？</p><ul><li>A. SRAM</li><li>B. DRAM</li><li>C. Flash</li><li>D. ROM</li></ul></li><li><p>磁盘访问时间不包括？</p><ul><li>A. 寻道时间</li><li>B. 旋转延迟</li><li>C. 传输时间</li><li>D. 译码时间</li></ul></li><li><p>直接映射 Cache 中，主存块映射到？</p><ul><li>A. 任意行</li><li>B. 固定唯一行</li><li>C. 固定组内任意行</li><li>D. OS 决定</li></ul></li><li><p>写回（Write Back）策略特点是？</p><ul><li>A. 每次写都更新主存</li><li>B. 只写 Cache，替换时才写回</li><li>C. 写缺失不调入 Cache</li><li>D. 不需要脏位</li></ul></li><li><p>虚拟存储器页面大小通常为？</p><ul><li>A. 64 B</li><li>B. 512 B</li><li>C. 4 KB</li><li>D. 1 MB</li></ul></li><li><p>TLB 的作用是？</p><ul><li>A. 缓存数据</li><li>B. 加速地址翻译</li><li>C. 存页表</li><li>D. 管理交换区</li></ul></li><li><p>哪种置换算法可能出现 Belady 异常？</p><ul><li>A. LRU</li><li>B. Clock</li><li>C. FIFO</li><li>D. 工作集</li></ul></li></ol><h3 id=二-简答题>二、简答题</h3><ol><li><p>简述存储器层次化结构的设计思想及理论依据。</p></li><li><p>比较 SRAM 和 DRAM 的特点及应用场景。</p></li><li><p>说明三种 Cache 映射方式的优缺点。</p></li><li><p>什么是缺页异常？简述处理过程。</p></li><li><p>虚拟存储器有哪些优点？与 Cache 有何异同？</p></li></ol><h3 id=三-综合应用题>三、综合应用题</h3><ol><li><p>某 32 位系统，Cache 32KB，块大小 64B：</p><ul><li>(1) 直接映射下 Tag、Index、Offset 各几位？</li><li>(2) 8 路组相联下 Tag、Index、Offset 各几位？</li><li>(3) 地址 0x12345678 在直接映射下映射到哪行？</li></ul></li><li><p>某磁盘 4 盘片（8 面），每面 10000 磁道，每道 1000 扇区，每扇区 512B，7200rpm，平均寻道 5ms：</p><ul><li>(1) 格式化容量？</li><li>(2) 平均旋转延迟？</li><li>(3) 读 1MB 连续文件大约时间？</li></ul></li><li><p>某系统 4KB 页，物理内存 256MB，虚拟地址 4GB：</p><ul><li>(1) 页表多少条目？每个 PTE 至少多少位？</li><li>(2) 两级页表下两级索引各几位？</li><li>(3) TLB 命中率 95%，TLB 1ns，访存 50ns，平均翻译时间？</li></ul></li></ol><hr><h2 id=参考答案>参考答案</h2><h3 id=选择题>选择题</h3><ol><li>B 2. B 3. D 4. B 5. B 6. C 7. B 8. C</li></ol><h3 id=简答题要点>简答题要点</h3><ol><li>利用局部性原理，上层是下层缓存，在速度/容量/价格间平衡。</li><li>SRAM 触发器不刷新、快、贵，用于 Cache；DRAM 电容需刷新、集成度高、便宜，用于主存。</li><li>直接映射硬件简单但冲突多；全相联冲突少但硬件复杂；组相联折中。</li><li>访问页不在内存时触发，OS 从磁盘调入，更新页表后重新执行。</li><li>优点：扩大地址空间、内存保护、共享、简化管理。与 Cache 都是层次存储，但管理方、块大小、缺失代价不同。</li></ol></div><footer class=article-footer><span>归档于</span>
+<a href=/categories/cs-architecture/>Cs-Architecture</a></footer></article><aside class="toc glass-panel" aria-label=文章目录><strong>本文目录</strong><nav id=TableOfContents><ul><li><a href=#一-存储器概述>一、存储器概述</a><ul><li><a href=#1-dot-1-存储器的分类>1.1 存储器的分类</a><ul><li><a href=#按存储介质>按存储介质</a></li><li><a href=#按存取方式>按存取方式</a></li></ul></li><li><a href=#1-dot-2-主存储器的组成>1.2 主存储器的组成</a></li><li><a href=#1-dot-3-存储器层次化结构>1.3 存储器层次化结构</a></li><li><a href=#1-dot-4-程序访问的局部性>1.4 程序访问的局部性</a></li></ul></li><li><a href=#二-主存与-cpu-的连接>二、主存与 CPU 的连接</a><ul><li><a href=#2-dot-1-sram-与-dram>2.1 SRAM 与 DRAM</a></li><li><a href=#2-dot-2-dram-刷新方式>2.2 DRAM 刷新方式</a></li><li><a href=#2-dot-3-现代-dram-演进>2.3 现代 DRAM 演进</a></li><li><a href=#2-dot-4-主存容量扩展>2.4 主存容量扩展</a></li><li><a href=#2-dot-5-load-store-指令的操作过程>2.5 Load/Store 指令的操作过程</a></li></ul></li><li><a href=#三-硬盘存储器>三、硬盘存储器</a><ul><li><a href=#3-dot-1-磁盘结构>3.1 磁盘结构</a></li><li><a href=#3-dot-2-磁盘访问时间>3.2 磁盘访问时间</a></li><li><a href=#3-dot-3-ssd-固态硬盘>3.3 SSD 固态硬盘</a></li></ul></li><li><a href=#四-高速缓冲存储器-cache>四、高速缓冲存储器（Cache）</a><ul><li><a href=#4-dot-1-cache-工作原理>4.1 Cache 工作原理</a></li><li><a href=#4-dot-2-三种映射方式>4.2 三种映射方式</a></li><li><a href=#4-dot-3-地址结构-以直接映射为例>4.3 地址结构（以直接映射为例）</a></li><li><a href=#4-dot-4-替换算法与写策略>4.4 替换算法与写策略</a></li><li><a href=#4-dot-5-三类-cache-缺失-3c-模型>4.5 三类 Cache 缺失（3C 模型）</a></li></ul></li><li><a href=#五-虚拟存储器>五、虚拟存储器</a><ul><li><a href=#5-dot-1-虚拟存储器概述>5.1 虚拟存储器概述</a></li><li><a href=#5-dot-2-地址翻译过程>5.2 地址翻译过程</a></li><li><a href=#5-dot-3-缺页异常处理>5.3 缺页异常处理</a></li><li><a href=#5-dot-4-多级页表-x86-64-四级页表>5.4 多级页表（x86-64 四级页表）</a></li><li><a href=#5-dot-5-存储保护>5.5 存储保护</a></li></ul></li><li><a href=#六-现代技术扩展>六、现代技术扩展</a><ul><li><a href=#6-dot-1-新型存储技术>6.1 新型存储技术</a></li><li><a href=#6-dot-2-cxl-compute-express-link>6.2 CXL（Compute Express Link）</a></li><li><a href=#6-dot-3-cache-优化技术>6.3 Cache 优化技术</a></li><li><a href=#6-dot-4-大页与-thp>6.4 大页与 THP</a></li><li><a href=#6-dot-5-存算一体>6.5 存算一体</a></li></ul></li><li><a href=#七-本章练习题>七、本章练习题</a><ul><li><a href=#一-单项选择题>一、单项选择题</a></li><li><a href=#二-简答题>二、简答题</a></li><li><a href=#三-综合应用题>三、综合应用题</a></li></ul></li><li><a href=#参考答案>参考答案</a><ul><li><a href=#选择题>选择题</a></li><li><a href=#简答题要点>简答题要点</a></li></ul></li></ul></nav></aside></div></main><footer class=site-footer><div class=footer-inner><p>&copy; 2023–2026 你的名字. 保留所有权利。</p><div class=footer-meta></div></div></footer><script defer src=https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js crossorigin=anonymous></script><script defer src=https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js crossorigin=anonymous></script><script>document.addEventListener("DOMContentLoaded",function(){typeof katex!="undefined"&&document.querySelectorAll(".katex-block[data-math]").forEach(function(e){try{katex.render(e.textContent,e,{displayMode:!0,throwOnError:!1})}catch{}}),typeof renderMathInElement=="function"&&renderMathInElement(document.body,{delimiters:[{left:"$$",right:"$$",display:!0},{left:"\\[",right:"\\]",display:!0},{left:"$",right:"$",display:!1},{left:"\\(",right:"\\)",display:!1}],ignoredTags:["script","noscript","style","textarea","pre","code"],throwOnError:!1})})</script><script type=module>
+  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11.17.2/dist/mermaid.esm.min.mjs";
+
+  
+  
+  
+  const cfg = {"lineColor":"","lineStyle":"","lineWidth":"","nodeBg":"","nodeBorder":"","nodeRadius":"","nodeTextColor":""};
+
+  const nodes = Array.from(document.querySelectorAll(".mermaid[data-mermaid]"));
+  const sources = nodes.map((node) => node.textContent);
+  const isDark = () => document.documentElement.getAttribute("data-theme") === "dark";
+
+  
+  const cssVar = (name, fallback) =>
+    getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
+  
+  const pick = (key, fallback) => (cfg[key] || "").trim() || fallback;
+  
+  const dashArrays = { solid: "0", dashed: "6 5", dotted: "2 3" };
+
+  const draw = async () => {
+    const dark = isDark();
+    const accent = cssVar("--accent", dark ? "#6aa7ff" : "#2f7de1");
+    const textColor = pick("nodeTextColor", cssVar("--prose-text", dark ? "#e2e8f2" : "#283448"));
+    const radius = pick("nodeRadius", "10px");
+    const lineWidth = pick("lineWidth", "1.6px");
+    
+    
+    const clusterBg = dark ? "#101a2c" : "#ece7dc";
+    const lineColor = pick("lineColor", dark ? "#8fa5c6" : "#5a6b85");
+
+    mermaid.initialize({
+      startOnLoad: false,
+      securityLevel: "strict",
+      theme: "base",
+      themeVariables: {
+        primaryColor: pick("nodeBg", dark ? "#141f36" : "#ffffff"),
+        primaryBorderColor: pick("nodeBorder", accent),
+        nodeBorder: pick("nodeBorder", accent),
+        primaryTextColor: textColor,
+        nodeTextColor: textColor,
+        textColor: textColor,
+        lineColor: lineColor,
+        
+        edgeLabelBackground: cssVar("--code-bg", dark ? "#0b1220" : "#f3eee5")
+      },
+      themeCSS: `
+        .node rect { rx: ${radius} !important; ry: ${radius} !important; }
+        .edge-thickness-normal { stroke-width: ${lineWidth} !important; }
+        .edge-thickness-thick { stroke-width: calc(${lineWidth} * 2) !important; }
+        .edge-pattern-solid { stroke-dasharray: ${dashArrays[pick("lineStyle", "solid")] || "0"} !important; }
+        .cluster rect { fill: ${clusterBg} !important; stroke: ${lineColor} !important; }
+        .cluster-label, .cluster-label span { color: ${textColor} !important; }
+      `,
+      
+      fontFamily: getComputedStyle(document.body).fontFamily || "sans-serif"
+    });
+    
+    nodes.forEach((node, index) => {
+      node.textContent = sources[index];
+      node.removeAttribute("data-processed");
+    });
+    await mermaid.run({ nodes });
+  };
+
+  try {
+    await draw();
+    new MutationObserver(draw).observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["data-theme"]
+    });
+  } catch (error) {
+    
+    console.error("[mermaid] 渲染失败：", error);
+  }
+</script><script src=/js/main.min.d67c76b16258bc785c9a7bda52b7326bf67bb61290c8e66e975ed27a7330b4c9.js integrity="sha256-1nx2sWJYvHhcmnvaUrcya/Z7thKQyOZul17SenMwtMk=" defer></script></body></html>
